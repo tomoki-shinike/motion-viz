@@ -85,6 +85,18 @@ td.hint{color:var(--sub);font-size:12.5px;padding-top:0}
 td.lab1{white-space:nowrap;font-weight:700}
 tr.r1 td{border-bottom:0;padding-bottom:2px}
 .tablewrap{overflow-x:auto}
+.tabs{display:flex;gap:6px;margin:6px 0 8px}
+.tab{flex:1 1 0;min-width:0;border:1px solid var(--line);background:#fff;border-radius:10px;padding:8px 4px;font-size:14px;font-family:inherit;color:var(--ink);cursor:pointer;min-height:42px;line-height:1.3}
+.tab[aria-selected=true]{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:700}
+.tab .cnt{display:inline-block;margin-left:5px;min-width:18px;padding:0 5px;border-radius:999px;background:rgba(0,0,0,.12);font-size:12px}
+.tab[aria-selected=true] .cnt{background:rgba(255,255,255,.28)}
+.tab small{display:block;font-size:11px;font-weight:400;opacity:.85}
+.chiprow{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:6px}
+.chip.est{border-style:dashed}
+td.sc{min-width:118px}
+td.sc .sv{font-variant-numeric:tabular-nums;font-weight:600}
+td.sc .sm{color:var(--sub);font-size:12.5px}
+td.sc .badge{margin-left:0;margin-top:2px;font-size:11px;padding:1px 8px}
 .check{display:flex;align-items:center;gap:8px;min-height:40px;font-size:15px}
 .check input{width:20px;height:20px;accent-color:var(--accent)}
 #cv3d{width:100%;aspect-ratio:16/9;display:block;background:#0b1118;border-radius:12px;touch-action:none;cursor:grab}
@@ -306,7 +318,9 @@ footer{max-width:760px;margin:0 auto;padding:0 14px 30px;font-size:12.5px;color:
 
     <div class="field">
       <span class="lab">グラフと画面に出す角度（タップで切り替え）</span>
-      <div class="chips" id="metricChips"></div>
+      <div class="tabs" id="angleTabs" role="tablist"></div>
+      <div id="metricChips"></div>
+      <div class="sub" id="estNote" style="margin-top:2px"></div>
     </div>
 
     <div class="graphwrap hidden" id="graphWrap">
@@ -338,6 +352,7 @@ footer{max-width:760px;margin:0 auto;padding:0 14px 30px;font-size:12.5px;color:
 
     <div style="margin-top:14px">
       <div class="lab sub" style="font-weight:700;margin-bottom:6px" id="tableTitle">角度のまとめ</div>
+      <div class="tabs" id="tableTabs" role="tablist"></div>
       <div class="tablewrap"><table id="statTable"></table></div>
     </div>
     <div class="note warn hidden" id="qualityNote"></div>
@@ -386,7 +401,7 @@ footer{max-width:760px;margin:0 auto;padding:0 14px 30px;font-size:12.5px;color:
 </main>
 <footer>
   姿勢推定（画像から関節の位置を見つける技術）による<b>目安の値</b>です。診断や評価の根拠にはせず、経過を見る参考として使ってください。<br>
-  試作版 v0.5
+  試作版 v0.9.1
 </footer>
 
 <!-- ============================================================
@@ -395,11 +410,13 @@ footer{max-width:760px;margin:0 auto;padding:0 14px 30px;font-size:12.5px;color:
 <script id="core">
 // 体の関節の番号（MediaPipeの33点のうち使うもの）
 const LM = {NOSE:0, L_EAR:7, R_EAR:8, L_SH:11, R_SH:12, L_EL:13, R_EL:14, L_WR:15, R_WR:16,
-  L_HIP:23, R_HIP:24, L_KNEE:25, R_KNEE:26, L_ANK:27, R_ANK:28, L_HEEL:29, R_HEEL:30, L_TOE:31, R_TOE:32};
-const VIS_MIN = 0.3;            // これ未満の「見えている確からしさ」の点は使わない
+  L_PINKY:17, R_PINKY:18, L_INDEX:19, R_INDEX:20, L_HIP:23, R_HIP:24, L_KNEE:25, R_KNEE:26, L_ANK:27, R_ANK:28, L_HEEL:29, R_HEEL:30, L_TOE:31, R_TOE:32};
+const VIS_MIN = 0.3;            // これ未満の「見えている確からしさ」の点は、ふつうは使わない
+const VIS_EST = 0;              // 反対側など見えない部位を「推定」で出すときは、モデルが補った位置もそのまま使う
+let VIS_CUR = VIS_MIN;          // いま使っているしきい値（computeSeries が一時的に切り替える）
 const RAD2DEG = 180 / Math.PI;
 
-function ok(p){ return !!p && p.v >= VIS_MIN && isFinite(p.x) && isFinite(p.y); }
+function ok(p){ return !!p && p.v >= VIS_CUR && isFinite(p.x) && isFinite(p.y); }
 function mid(a,b){ return {x:(a.x+b.x)/2, y:(a.y+b.y)/2, v:Math.min(a.v,b.v)}; }
 
 // 3点 a-b-c を結んだとき、b の位置での内側の角度（0〜180度）
@@ -412,7 +429,56 @@ function interiorAngle(a,b,c){
 }
 function sidePts(lm,s){
   return {sh:lm[LM[s+'_SH']], hip:lm[LM[s+'_HIP']], knee:lm[LM[s+'_KNEE']],
-          ank:lm[LM[s+'_ANK']], heel:lm[LM[s+'_HEEL']], toe:lm[LM[s+'_TOE']]};
+          ank:lm[LM[s+'_ANK']], heel:lm[LM[s+'_HEEL']], toe:lm[LM[s+'_TOE']],
+          el:lm[LM[s+'_EL']], wr:lm[LM[s+'_WR']]};
+}
+// ----- 上肢（肩・肘・手首） -----
+// 体幹（a0→a1）に対する、腕（b0→b1）の前後の角度。腕を垂らした状態が0°、前へ上げると＋（dir＝進む向き：右+1／左-1）
+function segFlex(a0,a1,b0,b1,dir){
+  if(!(ok(a0)&&ok(a1)&&ok(b0)&&ok(b1))) return NaN;
+  const ax=a1.x-a0.x, ay=a1.y-a0.y, tx=b1.x-b0.x, ty=b1.y-b0.y;
+  if(Math.hypot(ax,ay)<1e-6 || Math.hypot(tx,ty)<1e-6) return NaN;
+  return -Math.atan2(ax*ty-ay*tx, ax*tx+ay*ty)*RAD2DEG*dir;
+}
+function shoulderFlex(P,dir){ return segFlex(P.sh,P.hip,P.sh,P.el,dir); }
+// 肩の外転（正面・背面から）：腕を垂らした状態が0°、体から離して横へ上げると＋、体の前へ寄せると−
+function shoulderAbd(lm,s){
+  const o=s==='L'?'R':'L', sh=lm[LM[s+'_SH']], hip=lm[LM[s+'_HIP']], el=lm[LM[s+'_EL']], osh=lm[LM[o+'_SH']];
+  if(!(ok(sh)&&ok(hip)&&ok(el)&&ok(osh))) return NaN;
+  const ax=hip.x-sh.x, ay=hip.y-sh.y, tx=el.x-sh.x, ty=el.y-sh.y;
+  if(Math.hypot(ax,ay)<1e-6 || Math.hypot(tx,ty)<1e-6) return NaN;
+  const th=Math.atan2(ax*ty-ay*tx, ax*tx+ay*ty)*RAD2DEG;
+  const sgn=Math.sign(sh.x-osh.x)||1;             // 画面の右にある肩なら、右へ開くのが「外へ」
+  return -th*sgn;
+}
+// 肘の曲がり：まっすぐ0°、曲げるほど大きい（2次元）
+function elbowFlex2D(P){
+  if(!(ok(P.sh)&&ok(P.el)&&ok(P.wr))) return NaN;
+  return 180 - interiorAngle(P.sh, P.el, P.wr);
+}
+function ok3(p){ return !!p && p.v>=VIS_CUR && isFinite(p.x) && isFinite(p.y) && isFinite(p.z); }
+function dot3(a,b){ return a.x*b.x+a.y*b.y+a.z*b.z; }
+function len3(a){ return Math.hypot(a.x,a.y,a.z); }
+function scale3(a,k){ return {x:a.x*k, y:a.y*k, z:a.z*k}; }
+// 肘の曲がり（3次元）：カメラに向かって腕を曲げる動きでも、画像上で縮んで見えず測れる
+function elbowFlex3D(W,s){
+  const sh=W && W[LM[s+'_SH']], el=W && W[LM[s+'_EL']], wr=W && W[LM[s+'_WR']];
+  if(!(ok3(sh)&&ok3(el)&&ok3(wr))) return NaN;
+  const u=sub3(sh,el), w=sub3(wr,el), nu=len3(u), nw=len3(w);
+  if(nu<1e-6||nw<1e-6) return NaN;
+  return 180 - Math.acos(Math.max(-1,Math.min(1,dot3(u,w)/(nu*nw))))*RAD2DEG;
+}
+// 手首の曲がり：前腕（肘→手首）に対して、手（手首→人差し指と小指のつけ根の中点）が手のひら側へ曲がると＋（掌屈）
+// 手のひらの向きは「手首・人差し指・小指」の3点がつくる面の向きで決める。奥行きの符号 zs は estimateDepth と同じ
+function wristFlex3D(W,s,zs){
+  const g=k=>{ const p=W && W[k]; return ok3(p) ? to3(p,zs||1) : null; };
+  const el=g(LM[s+'_EL']), wr=g(LM[s+'_WR']), ix=g(LM[s+'_INDEX']), pk=g(LM[s+'_PINKY']);
+  if(!(el&&wr&&ix&&pk)) return NaN;
+  let f=sub3(wr,el); const nf=len3(f); if(nf<1e-6) return NaN; f=scale3(f,1/nf);
+  const h=sub3(mid3(ix,pk),wr); if(len3(h)<1e-6) return NaN;
+  let n=cross3(sub3(ix,wr), sub3(pk,wr)); if(s==='L') n=scale3(n,-1);   // 手のひら側を向く法線
+  n=sub3(n, scale3(f,dot3(n,f))); const nn=len3(n); if(nn<1e-6) return NaN; n=scale3(n,1/nn);
+  return Math.atan2(dot3(h,n), dot3(h,f))*RAD2DEG;
 }
 
 // ----- 横から見たときの角度 -----
@@ -430,15 +496,20 @@ function hipFlex(P, dir){
   return -theta*dir;
 }
 // 足首：直角が0°、つま先を上げる（背屈）＋、下げる（底屈）−
+// 下腿（膝→足首）と足の裏（かかと→つま先）のなす角。直角を0°とし、つま先が上がる方向を背屈（＋）、下がる方向を底屈（−）
+// ・かかとが検出できないときは、足首からつま先までで代用せず「測れない」とする（足首は足の裏より高い位置にあり、立っているだけで底屈20°前後の偏りが出るため）
+// ・足の長さが下腿に比べて極端に短い（足の向きを読み取れない）ときも測れないとする
+// ・関節可動域の参考値（背屈20°・底屈45°）を大きく超える値（背屈45°超・底屈70°超）は、足の位置の検出ミスとみなして除外する
+const ANKLE_DF_LIMIT = 45, ANKLE_PF_LIMIT = 70;
 function ankleDF(P){
-  if(!(ok(P.knee)&&ok(P.ank)&&ok(P.toe))) return NaN;
-  const base = ok(P.heel) ? P.heel : P.ank;
-  const sx=P.knee.x-P.ank.x, sy=P.knee.y-P.ank.y;  // すね（足首→膝）
-  const fx=P.toe.x-base.x,   fy=P.toe.y-base.y;     // 足の裏の向き（かかと→つま先）
+  if(!(ok(P.knee)&&ok(P.ank)&&ok(P.heel)&&ok(P.toe))) return NaN;
+  const sx=P.knee.x-P.ank.x, sy=P.knee.y-P.ank.y;  // 下腿（足首→膝）
+  const fx=P.toe.x-P.heel.x, fy=P.toe.y-P.heel.y;   // 足の裏の向き（かかと→つま先）
   const ns=Math.hypot(sx,sy), nf=Math.hypot(fx,fy);
-  if(ns<1e-6||nf<1e-6) return NaN;
+  if(ns<1e-6||nf<1e-6 || nf<0.2*ns) return NaN;
   const cos=Math.max(-1, Math.min(1,(sx*fx+sy*fy)/(ns*nf)));
-  return 90 - Math.acos(cos)*RAD2DEG;
+  const v=90 - Math.acos(cos)*RAD2DEG;
+  return (v>ANKLE_DF_LIMIT || v<-ANKLE_PF_LIMIT) ? NaN : v;
 }
 function trunkPoints(lm, sides){
   let sh, hip;
@@ -483,52 +554,79 @@ function kneeInOut(lm, s){
   return th*sgn;
 }
 
-const COLORS = {knee:'#2563eb', hip:'#16a34a', ankle:'#d97706', trunk:'#7c3aed', shoulder:'#0891b2', pelvis:'#db2777', valgus:'#dc2626'};
+const COLORS = {shJ:'#0284c7', elbow:'#65a30d', wrist:'#c026d3', knee:'#2563eb', hip:'#16a34a', ankle:'#d97706', trunk:'#7c3aed', shoulder:'#0891b2', pelvis:'#db2777', valgus:'#dc2626'};
 
 // 表示する角度の一覧を作る
 // pos／neg：値が＋のとき・−のときの動きの呼び名（理学療法の関節可動域の表記に合わせる）
 // facing：'side'（横から）／'front'（正面から＝被験者がカメラの方を向く）／'back'（背面から）
+// grp：lower（下肢＝脚）／trunk（体幹＝胴体）／upper（上肢＝腕）。base・side：表で左右を並べるための印
+// far：カメラから見えない側（測る側として選ばなかった側）。lenient：見えない部位も、モデルが補った位置で「推定」する
 function metricDefs(view, sides, facing){
   const defs=[], nm=s=>s==='L'?'左':'右';
+  const add=d=>defs.push(d);
+  const wristHint='前腕（肘〜手首）に対して、手が手のひら側へ曲がると掌屈、手の甲側へ曲がると背屈（まっすぐが0°）。手首は小さく、指先を細かく捉えにくいため、誤差が大きい参考値です';
   if(view==='side'){
-    for(const s of sides){
-      defs.push({key:'knee'+s, short:nm(s)+'膝', label:nm(s)+'膝関節', pos:'屈曲', neg:'過伸展', color:COLORS.knee, dash:s==='R', on:true,
+    for(const s of ['L','R']){
+      const far=!sides.includes(s), on=v=>!far && v, L={far, lenient:true, side:s, dash:s==='R'};
+      add({...L, key:'knee'+s, base:'knee', title:'膝関節', grp:'lower', short:nm(s)+'膝', label:nm(s)+'膝関節', pos:'屈曲', neg:'過伸展', color:COLORS.knee, on:on(true),
         hint:'膝がまっすぐ伸びた状態が0°。曲げると屈曲',
         calc:(lm)=>kneeFlex(sidePts(lm,s)), anchor:(lm)=>lm[LM[s+'_KNEE']]});
-      defs.push({key:'hip'+s, short:nm(s)+'股関節', label:nm(s)+'股関節', pos:'屈曲', neg:'伸展', color:COLORS.hip, dash:s==='R', on:true,
+      add({...L, key:'hip'+s, base:'hip', title:'股関節', grp:'lower', short:nm(s)+'股関節', label:nm(s)+'股関節', pos:'屈曲', neg:'伸展', color:COLORS.hip, on:on(true),
         hint:'体幹（肩の中心と股関節を結ぶ線）と大腿（股関節と膝を結ぶ線）が一直線の状態が0°（中間位）。太ももを前へ上げると屈曲、後ろへ引くと伸展',
         calc:(lm,c)=>hipFlex(sidePts(lm,s),c.dir), anchor:(lm)=>lm[LM[s+'_HIP']]});
-      defs.push({key:'ankle'+s, short:nm(s)+'足関節', label:nm(s)+'足関節', pos:'背屈', neg:'底屈', color:COLORS.ankle, dash:s==='R', on:false,
-        hint:'足の裏がすねと直角の状態が0°（中間位）。つま先を上げると背屈、下げると底屈',
+      add({...L, key:'ankle'+s, base:'ankle', title:'足関節', grp:'lower', short:nm(s)+'足関節', label:nm(s)+'足関節', pos:'背屈', neg:'底屈', color:COLORS.ankle, on:false,
+        hint:'下腿（膝と足首を結ぶ線）と足の裏（かかととつま先を結ぶ線）が直角の状態が0°（中間位）。つま先を上げる方向が背屈、下げる方向が底屈。かかと・つま先が見つからないコマや、可動域を大きく超える値は「測れない」として除きます',
         calc:(lm)=>ankleDF(sidePts(lm,s)), anchor:(lm)=>lm[LM[s+'_ANK']]});
+      add({...L, key:'shF'+s, base:'shF', title:'肩関節', grp:'upper', short:nm(s)+'肩', label:nm(s)+'肩関節', pos:'屈曲', neg:'伸展', color:COLORS.shJ, on:false,
+        hint:'体幹（肩と股関節を結ぶ線）に対して、腕（肩と肘を結ぶ線）を垂らした状態が0°。腕を前へ上げると屈曲、後ろへ引くと伸展',
+        calc:(lm,c)=>shoulderFlex(sidePts(lm,s),c.dir), anchor:(lm)=>lm[LM[s+'_SH']]});
+      add({...L, key:'elb'+s, base:'elb', title:'肘関節', grp:'upper', short:nm(s)+'肘', label:nm(s)+'肘関節', pos:'屈曲', neg:'過伸展', color:COLORS.elbow, on:false,
+        hint:'肘がまっすぐ伸びた状態が0°。曲げると屈曲',
+        calc:(lm,c)=>elbowFlex2D(sidePts(lm,s)), anchor:(lm)=>lm[LM[s+'_EL']]});
+      add({...L, key:'wri'+s, base:'wri', title:'手関節（手首）', grp:'upper', short:nm(s)+'手首', label:nm(s)+'手関節（手首）', pos:'掌屈', neg:'背屈', color:COLORS.wrist, on:false,
+        hint:wristHint,
+        calc:(lm,c)=>wristFlex3D(c.wl,s,c.zs), anchor:(lm)=>lm[LM[s+'_WR']]});
     }
-    defs.push({key:'trunk', short:'体幹(垂直)', label:'体幹の傾き（垂直線に対して）', pos:'前傾', neg:'後傾', color:COLORS.trunk, dash:false, on:false,
+    add({key:'trunk', base:'trunk', title:'体幹の傾き（垂直線に対して）', side:'C', grp:'trunk', short:'体幹(垂直)', label:'体幹の傾き（垂直線に対して）', pos:'前傾', neg:'後傾', color:COLORS.trunk, dash:false, on:false,
       hint:'まっすぐ立った状態（垂直）が0°。前へ倒れると前傾、後ろへ倒れると後傾。骨盤に対する体幹の角度は、骨盤の向きを検出できないため横からの撮影では測れません',
       calc:(lm,c)=>trunkLean(lm,sides,c.dir),
       anchor:(lm)=>{const T=trunkPoints(lm,sides); return T?T.sh:null;}});
   }else{
     // 被験者から見た左右。画面の右側にある部位は、正面撮影では被験者の左、背面撮影では被験者の右
     const back = facing==='back', scrR = back ? '右' : '左', scrL = back ? '左' : '右';
-    defs.push({key:'shoulder', short:'肩の傾き', label:'肩の傾き', pos:scrR+'下がり', neg:scrL+'下がり', color:COLORS.shoulder, dash:false, on:true,
+    add({key:'shoulder', base:'shoulder', title:'肩の傾き', side:'C', grp:'trunk', short:'肩の傾き', label:'肩の傾き', pos:scrR+'下がり', neg:scrL+'下がり', color:COLORS.shoulder, dash:false, on:true,
       hint:`水平が0°。被験者から見て${scrR}側の肩が下がると「${scrR}下がり」`,
       calc:(lm)=>tiltBetween(lm[LM.L_SH],lm[LM.R_SH]),
       anchor:(lm)=>(ok(lm[LM.L_SH])&&ok(lm[LM.R_SH]))?mid(lm[LM.L_SH],lm[LM.R_SH]):null});
-    defs.push({key:'pelvis', short:'骨盤の傾き', label:'骨盤の傾き', pos:scrR+'下がり', neg:scrL+'下がり', color:COLORS.pelvis, dash:false, on:true,
+    add({key:'pelvis', base:'pelvis', title:'骨盤の傾き', side:'C', grp:'trunk', short:'骨盤の傾き', label:'骨盤の傾き', pos:scrR+'下がり', neg:scrL+'下がり', color:COLORS.pelvis, dash:false, on:true,
       hint:`水平が0°（左右の股関節の高さが同じ）。被験者から見て${scrR}側が下がると「${scrR}下がり」`,
       calc:(lm)=>tiltBetween(lm[LM.L_HIP],lm[LM.R_HIP]),
       anchor:(lm)=>(ok(lm[LM.L_HIP])&&ok(lm[LM.R_HIP]))?mid(lm[LM.L_HIP],lm[LM.R_HIP]):null});
-    defs.push({key:'trunkPel', short:'体幹(骨盤)', label:'体幹の側屈（骨盤に対して）', pos:scrR+'側屈', neg:scrL+'側屈', color:COLORS.trunk, dash:true, on:false,
+    add({key:'trunkPel', base:'trunkPel', title:'体幹の側屈（骨盤に対して）', side:'C', grp:'trunk', short:'体幹(骨盤)', label:'体幹の側屈（骨盤に対して）', pos:scrR+'側屈', neg:scrL+'側屈', color:COLORS.trunk, dash:true, on:false,
       hint:'左右の股関節を結ぶ線に垂直な線を基準にした、体幹（骨盤の中心と肩の中心を結ぶ線）の角度。骨盤が傾いていても、その傾きを除いて見られます',
       calc:(lm)=>trunkRelPelvis(lm),
       anchor:(lm)=>{const T=trunkPoints(lm,['L','R']); return T?T.sh:null;}});
-    defs.push({key:'trunkLat', short:'体幹(垂直)', label:'体幹の傾き（垂直線に対して）', pos:scrR+'へ傾斜', neg:scrL+'へ傾斜', color:COLORS.trunk, dash:false, on:false,
+    add({key:'trunkLat', base:'trunkLat', title:'体幹の傾き（垂直線に対して）', side:'C', grp:'trunk', short:'体幹(垂直)', label:'体幹の傾き（垂直線に対して）', pos:scrR+'へ傾斜', neg:scrL+'へ傾斜', color:COLORS.trunk, dash:false, on:false,
       hint:'まっすぐ立った状態（垂直）が0°。垂直線を基準にした傾きで、骨盤の傾きの影響を含みます',
       calc:(lm)=>trunkLateral(lm),
       anchor:(lm)=>{const T=trunkPoints(lm,['L','R']); return T?T.sh:null;}});
     for(const s of ['L','R']){
-      defs.push({key:'valgus'+s, short:nm(s)+'膝', label:nm(s)+'膝の内外向き', pos:'外反', neg:'内反', color:COLORS.valgus, dash:s==='R', on:false,
+      const L={side:s, dash:s==='R', lenient:true};
+      add({...L, key:'valgus'+s, base:'valgus', title:'膝の内外向き', grp:'lower', short:nm(s)+'膝', label:nm(s)+'膝の内外向き', pos:'外反', neg:'内反', color:COLORS.valgus, on:false,
         hint:'まっすぐが0°。膝が内側へ入ると外反（X脚方向）、外へ出ると内反（O脚方向）。正面からの目安です',
         calc:(lm)=>kneeInOut(lm,s), anchor:(lm)=>lm[LM[s+'_KNEE']]});
+    }
+    for(const s of ['L','R']){
+      const L={side:s, dash:s==='R', lenient:true};
+      add({...L, key:'shA'+s, base:'shA', title:'肩関節（外転）', grp:'upper', short:nm(s)+'肩', label:nm(s)+'肩関節（外転）', pos:'外転', neg:'内転', color:COLORS.shJ, on:false,
+        hint:'体幹（肩と股関節を結ぶ線）に対して、腕を垂らした状態が0°。腕を体から離して横へ上げると外転、体の前へ寄せると内転。腕がカメラの方へ向かう動きは小さく見えるため、実際より小さく出ます',
+        calc:(lm)=>shoulderAbd(lm,s), anchor:(lm)=>lm[LM[s+'_SH']]});
+      add({...L, key:'elb'+s, base:'elb', title:'肘関節', grp:'upper', short:nm(s)+'肘', label:nm(s)+'肘関節', pos:'屈曲', neg:'過伸展', color:COLORS.elbow, on:false,
+        hint:'肘がまっすぐ伸びた状態が0°。曲げると屈曲。正面・背面からは、画像の奥行きの推定を使って測ります',
+        calc:(lm,c)=>c.wl ? elbowFlex3D(c.wl,s) : elbowFlex2D(sidePts(lm,s)), anchor:(lm)=>lm[LM[s+'_EL']]});
+      add({...L, key:'wri'+s, base:'wri', title:'手関節（手首）', grp:'upper', short:nm(s)+'手首', label:nm(s)+'手関節（手首）', pos:'掌屈', neg:'背屈', color:COLORS.wrist, on:false,
+        hint:wristHint,
+        calc:(lm,c)=>wristFlex3D(c.wl,s,c.zs), anchor:(lm)=>lm[LM[s+'_WR']]});
     }
   }
   return defs;
@@ -541,30 +639,47 @@ function smoothFrames(frames, win){
   return frames.map((f,i)=>{
     if(!f.lm) return {t:f.t, lm:null, wl:null};
     const lm=f.lm.map((p,k)=>{
-      let sx=0, sy=0, c=0;
+      let sx=0, sy=0, c=0, ax=0, ay=0, ac=0;
       for(let j=Math.max(0,i-half); j<=Math.min(n-1,i+half); j++){
         const q=frames[j].lm && frames[j].lm[k];
-        if(!q || q.v<VIS_MIN) continue;
+        if(!q || !isFinite(q.x) || !isFinite(q.y)) continue;
+        ax+=q.x; ay+=q.y; ac++;                       // 見えにくい点も、推定に使えるよう平均だけは取っておく
+        if(q.v<VIS_MIN) continue;
         sx+=q.x; sy+=q.y; c++;
       }
-      return c ? {x:sx/c, y:sy/c, v:p.v} : {x:p.x, y:p.y, v:p.v};
+      return c ? {x:sx/c, y:sy/c, v:p.v} : (ac ? {x:ax/ac, y:ay/ac, v:p.v} : {x:p.x, y:p.y, v:p.v});
     });
     const wl=f.wl ? f.wl.map((p,k)=>{
-      let sx=0, sy=0, sz=0, c=0;
+      let sx=0, sy=0, sz=0, c=0, ax=0, ay=0, az=0, ac=0;
       for(let j=Math.max(0,i-half); j<=Math.min(n-1,i+half); j++){
         const q=frames[j].wl && frames[j].wl[k];
-        if(!q || q.v<VIS_MIN) continue;
+        if(!q || !isFinite(q.x) || !isFinite(q.y) || !isFinite(q.z)) continue;
+        ax+=q.x; ay+=q.y; az+=q.z; ac++;
+        if(q.v<VIS_MIN) continue;
         sx+=q.x; sy+=q.y; sz+=q.z; c++;
       }
-      return c ? {x:sx/c, y:sy/c, z:sz/c, v:p.v} : {x:p.x, y:p.y, z:p.z, v:p.v};
+      return c ? {x:sx/c, y:sy/c, z:sz/c, v:p.v} : (ac ? {x:ax/ac, y:ay/ac, z:az/ac, v:p.v} : {x:p.x, y:p.y, z:p.z, v:p.v});
     }) : null;
     return {t:f.t, lm, wl};
   });
 }
 // ctx.dirs があれば1コマごとの体の向きを、なければ ctx.dir（全体で1つ）を使う
+// d.lenient の項目は、ふつうの計算で出せないコマだけ「推定」で計算し直す（ctx.est[key][i]＝1 なら推定のコマ）
 function computeSeries(frames, defs, ctx){
-  const out={};
-  for(const d of defs) out[d.key]=frames.map((f,i)=>f.lm ? d.calc(f.lm,{dir: ctx.dirs ? ctx.dirs[i] : ctx.dir}) : NaN);
+  const out={}, est=ctx.est||{};
+  try{
+    for(const d of defs){
+      const arr=new Array(frames.length).fill(NaN), flag=new Uint8Array(frames.length);
+      for(let i=0;i<frames.length;i++){
+        const f=frames[i]; if(!f.lm) continue;
+        const c={dir: ctx.dirs ? ctx.dirs[i] : ctx.dir, wl:f.wl, zs:ctx.zs};
+        VIS_CUR=VIS_MIN; let v=d.calc(f.lm,c);
+        if(!isFinite(v) && d.lenient){ VIS_CUR=VIS_EST; v=d.calc(f.lm,c); if(isFinite(v)) flag[i]=1; }
+        arr[i]=v;
+      }
+      out[d.key]=arr; est[d.key]=flag;
+    }
+  } finally { VIS_CUR=VIS_MIN; }
   return out;
 }
 function seriesStats(arr){
@@ -1036,7 +1151,7 @@ const el = {
   graphWrap:$('graphWrap'), graph:$('graph'), trailField:$('trailField'), trailChips:$('trailChips'),
   trailRef:$('trailRef'), trailLen:$('trailLen'),
   gaitBox:$('gaitBox'), gaitBadge:$('gaitBadge'), gaitKpis:$('gaitKpis'), gaitNote:$('gaitNote'),
-  statTable:$('statTable'), tableTitle:$('tableTitle'), qualityNote:$('qualityNote'),
+  statTable:$('statTable'), tableTitle:$('tableTitle'), angleTabs:$('angleTabs'), tableTabs:$('tableTabs'), estNote:$('estNote'), qualityNote:$('qualityNote'),
   optMask:$('optMask'), optGraph:$('optGraph'), optGraphRow:$('optGraphRow'), saveBtn:$('saveBtn'),
   status:$('status'), statusText:$('statusText'), model:$('model'), signNote:$('signNote'),
   view3dCard:$('view3dCard'), cv3d:$('cv3d'), v3Zoom:$('v3Zoom'), v3Est:$('v3Est'), v3Trail:$('v3Trail'), v3Flip:$('v3Flip'), v3Save:$('v3Save'), v3Note:$('v3Note'),
@@ -1097,7 +1212,8 @@ function offlineFiles(){
   ];
 }
 const offKey = n=>new URL('./__offline__/'+n, location.href).href;
-const offSupported = ()=>('caches' in window);
+const isWebOpen = ()=>/^https?:$/.test(location.protocol);   // Webのアドレス（https://…）から開いているか
+const offSupported = ()=>('caches' in window) && isWebOpen();
 async function offPresent(){
   if(!offSupported()) return false;
   try{
@@ -1157,7 +1273,7 @@ async function dropShell(){
 }
 // 解析に使うデータをダウンロードして保存する
 async function prepareOffline(force){
-  if(!offSupported()) throw new Error('この開き方では、オフライン用の保存ができません。Webのアドレス（https://…）から開いてください。');
+  if(!offSupported()) throw new Error('この開き方（ファイルを直接開く方法）では、端末へのデータ保存がブラウザに許可されていません。ツールをWeb上（https://…で始まるアドレス）に置いて、そのアドレスから開き直してください');
   const files = offlineFiles(), total = files.reduce((a,f)=>a+f.mb,0)*1048576;
   let done = 0;
   el.netProg.classList.remove('hidden');
@@ -1186,7 +1302,8 @@ async function netRender(){
       + (NET.shellOk ? '（ツール本体も保存済み）' : '（ツール本体の保存はできていません。電波のない場所では、この画面を開けない場合があります）');
   }else{
     el.netDesc.textContent = '電波がある場所で使います。解析に必要なデータ（約30MB）はその都度インターネットから読み込み、端末には保存しません。'
-      + (present ? '　※オフライン用のデータは保存済みです。' : '　オフラインに切り替えると、先にデータをダウンロードします（Wi-Fi推奨）。');
+      + (present ? '　※オフライン用のデータは保存済みです。' : '　オフラインに切り替えると、先にデータをダウンロードします（Wi-Fi推奨）。')
+      + (isWebOpen() ? '' : '　※いまはファイルを直接開いているため、オフラインへの切り替えはできません（Web上のアドレスから開くと使えます）。');
   }
 }
 async function resetEngine(){
@@ -1209,7 +1326,7 @@ async function setNetMode(m){
         catch(e){
           console.warn('offline prepare failed', e);
           el.netProg.classList.add('hidden');
-          netShowErr('ダウンロードできませんでした：'+(e.message||e)+'　電波のある場所でもう一度お試しください。オンラインのままにしています。');
+          netShowErr('ダウンロードできませんでした：'+(e.message||e)+(isWebOpen() ? '。電波のある場所でもう一度お試しください' : '')+'。オンラインのままにしています。');
           m = 'online';
         }
         if(m==='offline' && shellErr) netShowErr('解析用のデータは保存できましたが、ツール本体の保存ができませんでした（'+shellErr+'）。');
@@ -1868,14 +1985,20 @@ function recompute(keepSelection){
     : detectDirections(state.smoothed, state.W);
   state.dir=d.dir; state.dirs=d.dirs; state.dirMethod=d.method; state.dirTurns=d.turns;
   state.defs=metricDefs(state.view, state.sides, state.facing);
-  state.series=computeSeries(state.smoothed, state.defs, {dirs:state.dirs});
+  let zs=1; try{ zs=estimateDepth(state.smoothed,false,null).zs; }catch(e){}
+  const est={};
+  state.series=computeSeries(state.smoothed, state.defs, {dirs:state.dirs, zs, est});
+  state.estShare={};
+  for(const d of state.defs){ const a=state.series[d.key], f=est[d.key]; let n=0, e=0; for(let i=0;i<a.length;i++){ if(isFinite(a[i])){ n++; if(f[i]) e++; } } state.estShare[d.key]=n?e/n:0; }
   state.cadence = state.isVideo ? computeCadence(state.smoothed, state.view) : null;
   const keys=new Set(state.defs.map(d=>d.key));
   if(!keepSelection || ![...state.visible].some(k=>keys.has(k))){
     state.visible=new Set(state.defs.filter(d=>d.on).map(d=>d.key));
+    state.tab=null;                                   // 初期表示に戻したときは、タブも表示中の項目があるものに合わせる
   }else{
     state.visible=new Set([...state.visible].filter(k=>keys.has(k)));
   }
+  if(!state.tab || !state.defs.some(d=>d.grp===state.tab)) state.tab=(state.defs.find(d=>state.visible.has(d.key))||state.defs[0]||{grp:'lower'}).grp;
   buildMetricChips(); buildTrailChips(); buildSignNote(); renderGait(); renderTable(); renderQuality();
   setup3D(!keepSelection);
   state.dirty=true; state.lastIdx=-2;
@@ -1899,13 +2022,43 @@ function makeChip(label, color, pressed, onClick){
   b.addEventListener('click',()=>{ const p=b.getAttribute('aria-pressed')!=='true'; b.setAttribute('aria-pressed',String(p)); onClick(p); });
   return b;
 }
+const GROUPS = [{key:'lower', label:'下肢', sub:'脚'}, {key:'trunk', label:'体幹', sub:'胴体'}, {key:'upper', label:'上肢', sub:'腕'}];
+// 推定の印：反対側（見えない側）、またはモデルが補った位置から計算したコマが多い項目
+function estLabel(d){
+  if(d.far) return '推定';
+  const sh=(state.estShare && state.estShare[d.key])||0;
+  return sh>0.5 ? '推定' : (sh>0.1 ? '一部推定' : '');
+}
+function refreshTabs(){
+  for(const box of [el.angleTabs, el.tableTabs]){
+    box.textContent='';
+    for(const g of GROUPS){
+      if(!state.defs.some(d=>d.grp===g.key)) continue;
+      const n=state.defs.filter(d=>d.grp===g.key && state.visible.has(d.key)).length;
+      const b=document.createElement('button'); b.type='button'; b.className='tab'; b.setAttribute('role','tab');
+      b.setAttribute('aria-selected', String(state.tab===g.key));
+      b.append(g.label);
+      if(box===el.angleTabs && n){ const c=document.createElement('span'); c.className='cnt'; c.textContent=n; c.title='表示中の角度の数'; b.appendChild(c); }
+      const sm=document.createElement('small'); sm.textContent='＝'+g.sub; b.appendChild(sm);
+      b.addEventListener('click',()=>{ state.tab=g.key; refreshTabs(); buildMetricChips(); renderTable(); });
+      box.appendChild(b);
+    }
+  }
+}
 function buildMetricChips(){
   el.metricChips.textContent='';
+  refreshTabs();
+  el.metricChips.className='chips';                  // 横に並べ、あふれたら次の行へ
   for(const d of state.defs){
-    el.metricChips.appendChild(makeChip(d.short, d.color, state.visible.has(d.key), on=>{
-      on ? state.visible.add(d.key) : state.visible.delete(d.key); buildSignNote(); requestRedraw();
-    }));
+    if(d.grp!==state.tab) continue;
+    const b=makeChip(d.short+(d.far ? '（推定）' : ''), d.color, state.visible.has(d.key), on=>{
+      on ? state.visible.add(d.key) : state.visible.delete(d.key); buildSignNote(); refreshTabs(); requestRedraw();
+    });
+    if(d.far) b.classList.add('est');
+    el.metricChips.appendChild(b);
   }
+  const anyEst=state.defs.some(d=>d.grp===state.tab && (d.far || estLabel(d)));
+  el.estNote.textContent = anyEst ? '「推定」＝カメラから見えない側や隠れた部位を、AIが推測した位置から計算した値です。目安として見てください。' : '';
 }
 function buildTrailChips(){
   el.trailChips.textContent='';
@@ -2113,12 +2266,15 @@ function updateReadout(idx){
   const head=document.createElement('div'); head.style.gridColumn='1 / -1'; head.className='sub';
   head.textContent = state.isVideo ? `時刻 ${(state.times[idx]-state.clip.start).toFixed(2)}秒 ／ ${idx+1} コマ目（全${state.times.length}コマ）` : '写真の角度';
   el.readout.appendChild(head);
-  for(const d of state.defs){
+  const shown=state.defs.filter(d=>state.visible.has(d.key));
+  for(const d of shown){
     const val=state.series[d.key][idx];
     const div=document.createElement('div');
     const b=document.createElement('b'); b.textContent = fmtDir(d,val,1);
-    div.append(d.short+'：', b); el.readout.appendChild(div);
+    const e=(d.far || (state.estShare&&state.estShare[d.key]>0.5)) ? '（推定）' : '';
+    div.append(d.short+e+'：', b); el.readout.appendChild(div);
   }
+  if(!shown.length){ const d=document.createElement('div'); d.className='sub'; d.style.gridColumn='1 / -1'; d.textContent='下の「グラフと画面に出す角度」で、見たい角度を選んでください。'; el.readout.appendChild(d); }
 }
 function renderGait(){
   const show = state.isVideo;
@@ -2143,25 +2299,46 @@ function renderGait(){
     el.gaitNote.textContent = (c && c.reason) ? c.reason : 'ケーデンスを計算できませんでした';
   }
 }
+// 最小〜最大の表示。同じ向き（屈曲どうしなど）なら、呼び名は1回にまとめる
+function rangeText(d,a,b){
+  if(d.pos && isFinite(a) && isFinite(b) && a*b>0){ const w=a>0?d.pos:d.neg; return `${w} ${fd(Math.abs(a),1)}° 〜 ${fd(Math.abs(b),1)}°`; }
+  return `${fmtDir(d,a,1)} 〜 ${fmtDir(d,b,1)}`;
+}
+function statCell(d, single){
+  const td=document.createElement('td'); td.className='sc';
+  if(!d){ td.textContent='—'; return td; }
+  const st=seriesStats(state.series[d.key]);
+  const top=document.createElement('div'); top.className='sv';
+  top.textContent = !st ? '—' : (single ? fmtDir(d,st.mean,1) : rangeText(d,st.min,st.max));
+  td.appendChild(top);
+  if(st && !single){ const m=document.createElement('div'); m.className='sm'; m.textContent='動いた幅 '+f1(st.range)+'°'; td.appendChild(m); }
+  const e=estLabel(d); if(e){ const b=document.createElement('span'); b.className='badge fair'; b.textContent=e; td.appendChild(b); }
+  return td;
+}
 function renderTable(){
   const t=el.statTable; t.textContent='';
   const single=!state.isVideo;
   el.tableTitle.textContent = single ? '角度' : '角度のまとめ（解析した区間の中で）';
-  const th=document.createElement('tr');
-  for(const h of (single?['項目','角度']:['項目','最小','最大','動いた幅'])){
-    const c=document.createElement('th'); c.textContent=h; th.appendChild(c);
-  }
-  t.appendChild(th);
+  refreshTabs();
+  const rows=[], map=new Map();
   for(const d of state.defs){
-    const s=seriesStats(state.series[d.key]);
-    const tr=document.createElement('tr');
-    const add=(txt,cls)=>{ const td=document.createElement('td'); td.textContent=txt; if(cls) td.className=cls; tr.appendChild(td); };
-    add(d.label,'lab1');
-    if(single){ add(s?fmtDir(d,s.mean,1):'—','num'); }
-    else{ add(s?fmtDir(d,s.min,1):'—','num'); add(s?fmtDir(d,s.max,1):'—','num'); add(s?f1(s.range)+'°':'—','num'); }
-    tr.className='r1'; t.appendChild(tr);
+    if(d.grp!==state.tab) continue;
+    let r=map.get(d.base); if(!r){ r={title:d.title, hint:d.hint}; map.set(d.base,r); rows.push(r); }
+    r[d.side]=d;
+  }
+  const pair=rows.some(r=>r.L||r.R);
+  const th=document.createElement('tr');
+  for(const h of (pair?['項目','左','右']:['項目', single?'角度':'最小 〜 最大'])){ const c=document.createElement('th'); c.textContent=h; th.appendChild(c); }
+  t.appendChild(th);
+  const cols=pair?3:2;
+  for(const r of rows){
+    const tr=document.createElement('tr'); tr.className='r1';
+    const lab=document.createElement('td'); lab.className='lab1'; lab.textContent=r.title; lab.style.whiteSpace='normal'; tr.appendChild(lab);
+    if(r.C){ const c=statCell(r.C,single); if(pair) c.colSpan=2; tr.appendChild(c); }
+    else{ tr.appendChild(statCell(r.L,single)); tr.appendChild(statCell(r.R,single)); }
+    t.appendChild(tr);
     const tr2=document.createElement('tr'); tr2.className='r2'; const td2=document.createElement('td');
-    td2.colSpan=single?2:4; td2.className='hint'; td2.textContent=d.hint; tr2.appendChild(td2); t.appendChild(tr2);
+    td2.colSpan=cols; td2.className='hint'; td2.textContent=r.hint; tr2.appendChild(td2); t.appendChild(tr2);
   }
 }
 function renderQuality(){
@@ -2179,6 +2356,8 @@ function renderQuality(){
         : `体の向き：${state.dir>0?'画面の右向き':'画面の左向き'}（${src}から自動判定）。`);
     }
   }
+  if(state.defs.some(d=>d.far)) msgs.push('測る側に選ばなかった側（カメラから見えない側）は「推定」として出しています。体に隠れた手足の位置はAIの推測なので、実際より大きくずれることがあります。');
+  if(state.defs.some(d=>d.base==='wri' && state.visible.has(d.key))) msgs.push('手首の掌屈・背屈は、指先の位置が小さく不確かなため、特に誤差が大きい参考値です。向き（＋−）も、実際の動きと合っているか確かめてください。');
   if(state.view==='front') msgs.push(state.facing==='back'
     ? '左右は被験者から見た左右で表記しています（背面撮影では、画面の左側が被験者の左側です）。'
     : '左右は被験者から見た左右で表記しています（正面撮影では、画面の左側が被験者の右側です）。');
@@ -2231,6 +2410,7 @@ function drawGraph(ctx, W, H, o){
   ctx.lineJoin='round'; ctx.lineWidth=Math.max(2,fs/6);
   for(const d of metrics){
     ctx.strokeStyle=d.color; ctx.setLineDash(d.dash?[fs*0.5,fs*0.35]:[]);
+    ctx.globalAlpha = (d.far || (state.estShare && state.estShare[d.key]>0.5)) ? 0.55 : 1;
     ctx.beginPath(); let st=false;
     const arr=state.series[d.key];
     for(let i=0;i<arr.length;i++){
@@ -2238,7 +2418,7 @@ function drawGraph(ctx, W, H, o){
       const x=X(state.times[i]), y=Y(arr[i]);
       if(!st){ ctx.moveTo(x,y); st=true; } else ctx.lineTo(x,y);
     }
-    ctx.stroke();
+    ctx.stroke(); ctx.globalAlpha=1;
   }
   ctx.setLineDash([]);
   // 今の位置
@@ -2307,7 +2487,8 @@ async function saveStill(){
   const viewTxt = state.view==='side' ? `横から（${state.sides.length===2?'両側':(state.sides[0]==='L'?'左側':'右側')}）` : (state.facing==='back' ? '背面から（左右は被験者基準）' : '正面から（左右は被験者基準）');
   lines.push({t:`動作解析（試作）　${viewTxt}　${stamp}`, b:true});
   if(state.isVideo) lines.push({t:`この画面の時刻：解析区間の ${(curT-state.clip.start).toFixed(2)} 秒（区間 ${fmtSec(state.clip.start)}〜${fmtSec(state.clip.end)}）`});
-  const vals=state.defs.map(d=>{ const x=state.series[d.key][idx]; return `${d.label}：${fmtDir(d,x,1)}`; });
+  const savedDefs=state.defs.filter(d=>state.visible.has(d.key)), vdefs=savedDefs.length ? savedDefs : state.defs.filter(d=>d.on);
+  const vals=vdefs.map(d=>{ const x=state.series[d.key][idx]; return `${d.label}：${fmtDir(d,x,1)}${(d.far||(state.estShare&&state.estShare[d.key]>0.5))?'（推定）':''}`; });
   const c=state.cadence;
   if(c && c.ok) lines.push({t:`ケーデンス：${c.cadence.toFixed(0)} 歩/分（検出 ${c.steps} 歩・${c.quality==='good'?'信頼できそう':'参考値'}）`});
   if(withGraph){ const w=signWords(); if(w.pos.length){ lines.push({t:`グラフの上側（＋）：${w.pos.join('・')}`, s:true}); lines.push({t:`グラフの下側（−）：${w.neg.join('・')}`, s:true}); } }
