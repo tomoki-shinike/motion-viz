@@ -150,19 +150,19 @@ footer{max-width:760px;margin:0 auto;padding:0 14px 30px;font-size:12.5px;color:
 <div class="col-left">
   <!-- ⓪ 通信モード -->
   <section class="card" id="netCard">
-    <h2><span class="no">⚙</span>通信モード</h2>
-    <div class="seg">
-      <label><input type="radio" name="net" value="online" checked><span>オンライン</span></label>
-      <label><input type="radio" name="net" value="offline"><span>オフライン</span></label>
+    <h2><span class="no">⚙</span>解析データ</h2>
+    <div class="sub" id="netDesc"></div>
+    <div class="row hidden" id="netAsk" style="margin-top:8px">
+      <button class="btn small primary" id="netGet" type="button">端末に取り込む（約30MB）</button>
+      <button class="btn small" id="netSkip" type="button">今回は取り込まずに使う</button>
     </div>
-    <div class="sub" id="netDesc" style="margin-top:8px"></div>
     <div id="netProg" class="hidden">
       <div class="progress"><div id="netBar"></div></div>
       <div class="sub" id="netProgText">準備中…</div>
     </div>
     <div class="note err hidden" id="netErr"></div>
     <div class="row hidden" id="netBtns" style="margin-top:8px">
-      <button class="btn small" id="netRefresh" type="button">保存し直す</button>
+      <button class="btn small" id="netRefresh" type="button">最新データを取り直す</button>
       <button class="btn small" id="netClear" type="button">保存データを削除</button>
     </div>
   </section>
@@ -401,7 +401,7 @@ footer{max-width:760px;margin:0 auto;padding:0 14px 30px;font-size:12.5px;color:
 </main>
 <footer>
   姿勢推定（画像から関節の位置を見つける技術）による<b>目安の値</b>です。診断や評価の根拠にはせず、経過を見る参考として使ってください。<br>
-  試作版 v0.9.1
+  試作版 v0.10.0
 </footer>
 
 <!-- ============================================================
@@ -1157,7 +1157,7 @@ const el = {
   view3dCard:$('view3dCard'), cv3d:$('cv3d'), v3Zoom:$('v3Zoom'), v3Est:$('v3Est'), v3Trail:$('v3Trail'), v3Flip:$('v3Flip'), v3Save:$('v3Save'), v3Note:$('v3Note'),
   sideField:$('sideField'), dirField:$('dirField'),
   netDesc:$('netDesc'), netProg:$('netProg'), netBar:$('netBar'), netProgText:$('netProgText'), netErr:$('netErr'), netBtns:$('netBtns'),
-  netRefresh:$('netRefresh'), netClear:$('netClear'),
+  netRefresh:$('netRefresh'), netClear:$('netClear'), netAsk:$('netAsk'), netGet:$('netGet'), netSkip:$('netSkip'),
   selPlayAll:$('selPlayAll'), selPlayRange:$('selPlayRange'), loopSel:$('loopSel'), loopRes:$('loopRes'),
   reselectBtn:$('reselectBtn'), noteCard:$('noteCard'),
   whoNote:$('whoNote'), pickBar:$('pickBar'), pickInfo:$('pickInfo'), pickClear:$('pickClear'),
@@ -1186,11 +1186,12 @@ const procCtx = procCanvas.getContext('2d', {willReadFrequently:false});
 // ===== 解析エンジン（MediaPipe） =====
 const engine = {lm:null, key:null, delegate:null, mode:'VIDEO', tsBase:1000, mp:null, pending:null, forceCPU:false, poses:1, wantPoses:1};
 
-// ===== 通信モード（オンライン／オフライン） =====
-// オンライン：解析に必要なデータを、使うたびにインターネットから読み込む（端末には保存しない）
-// オフライン：先にデータを端末へ保存（ダウンロード）しておき、以後は電波なしで使う
+// ===== 解析データの扱い（保存済みを優先） =====
+// offline：端末に保存したデータで動く（通信なし）。保存できる環境では、これが基本
+// wait   ：保存データがないので、取り込む（ダウンロードする）かどうかの選択待ち
+// online ：今回だけ、保存せずにインターネットから読み込んで使う（ファイルを直接開いた場合もこちら）
 const NET = {
-  mode:'online', busy:false, shellOk:false,
+  mode:'wait', busy:false, shellOk:false,
   CACHE:`motion-offline-v${MP_VER}`,   // 解析に使うデータの保存先（ブラウザのキャッシュ領域）
   SHELL:'motion-shell-v1',             // ツール本体（この画面）の保存先
   LOCAL:'./lib/',                      // 同じ場所に置いたコピー（なくてもよい。なければ公開元から取得）
@@ -1211,7 +1212,21 @@ function offlineFiles(){
     {name:'pose_landmarker_full.task',   kind:'model', mb:9.4,  urls:[NET.LOCAL+'pose_landmarker_full.task', MODELS.full]}
   ];
 }
-const offKey = n=>new URL('./__offline__/'+n, location.href).href;
+// 保存する名前は、開いたアドレスの形（末尾の / の有無、index.html の有無など）に左右されない固定の名前にする
+// （以前の版は開いたアドレスを元にしていたため、開き方が少し変わるだけで「保存データなし」と見なされ、ダウンロードし直していた）
+const offKey = n=>location.origin+'/__motion_offline__/'+n;
+// 以前の版の名前で保存されたデータも探し、見つかれば新しい名前にも保存して引き継ぐ
+async function offMatch(c, name){
+  let r = await c.match(offKey(name));
+  if(r) return r;
+  for(const k of await c.keys()){
+    if(k.url.endsWith('/__offline__/'+name)){
+      r = await c.match(k);
+      if(r){ try{ await c.put(offKey(name), r.clone()); }catch(e){} return r; }
+    }
+  }
+  return null;
+}
 const isWebOpen = ()=>/^https?:$/.test(location.protocol);   // Webのアドレス（https://…）から開いているか
 const offSupported = ()=>('caches' in window) && isWebOpen();
 async function offPresent(){
@@ -1219,12 +1234,12 @@ async function offPresent(){
   try{
     if(!(await caches.has(NET.CACHE))) return false;   // 開くだけで空の入れ物ができてしまうため、先に有無を確かめる
     const c = await caches.open(NET.CACHE);
-    for(const f of offlineFiles()){ if(!(await c.match(offKey(f.name)))) return false; }
+    for(const f of offlineFiles()){ if(!(await offMatch(c, f.name))) return false; }
     return true;
   }catch(e){ return false; }
 }
 async function offBuf(name){
-  const c = await caches.open(NET.CACHE); const r = await c.match(offKey(name));
+  const c = await caches.open(NET.CACHE); const r = await offMatch(c, name);
   if(!r) throw new Error('保存したデータが見つかりません（'+name+'）');
   return r.arrayBuffer();
 }
@@ -1281,7 +1296,7 @@ async function prepareOffline(force){
   try{ if(navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(()=>{}); }catch(e){}
   const c = await caches.open(NET.CACHE);
   for(const f of files){
-    if(!force && await c.match(offKey(f.name))){ done += f.mb*1048576; upd(f.name); continue; }
+    if(!force && await offMatch(c, f.name)){ done += f.mb*1048576; upd(f.name); continue; }
     const buf = await fetchFile(f, n=>{ done += n; upd(f.name); });
     await c.put(offKey(f.name), new Response(buf, {headers:{'content-type': f.kind==='wasm'?'application/wasm':'application/octet-stream'}}));
   }
@@ -1295,15 +1310,19 @@ async function prepareOffline(force){
 function netShowErr(msg){ el.netErr.textContent = msg || ''; el.netErr.classList.toggle('hidden', !msg); }
 async function netRender(){
   const present = await offPresent();
+  const canSave = offSupported();
   el.netBtns.classList.toggle('hidden', !present);
-  document.querySelector('input[name="net"][value="'+NET.mode+'"]').checked = true;
+  el.netAsk.classList.toggle('hidden', !(canSave && !present && !NET.busy));
+  el.netSkip.classList.toggle('hidden', NET.mode!=='wait');
   if(NET.mode==='offline'){
-    el.netDesc.textContent = '端末に保存したデータで動きます。電波がなくても使えます。'
+    el.netDesc.textContent = '解析に必要なデータ（約30MB）は、この端末に保存済みです。通信せずに使えます（電波がなくても使えます）。'
       + (NET.shellOk ? '（ツール本体も保存済み）' : '（ツール本体の保存はできていません。電波のない場所では、この画面を開けない場合があります）');
+  }else if(NET.mode==='wait'){
+    el.netDesc.textContent = '解析に必要なデータ（約30MB）を、この端末に取り込みます。取り込みは最初の1回だけで、次回からは通信せずに使えます。モバイル回線の場合は通信量にご注意ください（Wi-Fi推奨）。';
+  }else if(canSave){
+    el.netDesc.textContent = '今回は端末に保存せず、インターネットから読み込んで使っています（開くたびに約30MBの通信がかかります）。通信を減らすには「端末に取り込む」を押してください。';
   }else{
-    el.netDesc.textContent = '電波がある場所で使います。解析に必要なデータ（約30MB）はその都度インターネットから読み込み、端末には保存しません。'
-      + (present ? '　※オフライン用のデータは保存済みです。' : '　オフラインに切り替えると、先にデータをダウンロードします（Wi-Fi推奨）。')
-      + (isWebOpen() ? '' : '　※いまはファイルを直接開いているため、オフラインへの切り替えはできません（Web上のアドレスから開くと使えます）。');
+    el.netDesc.textContent = 'いまはファイルを直接開いているため、データを端末に保存できません。使うたびに約30MBをインターネットから読み込みます。Web上のアドレス（https://…）から開くと、保存して通信なしで使えます。';
   }
 }
 async function resetEngine(){
@@ -1312,53 +1331,50 @@ async function resetEngine(){
   engine.lm = null; engine.key = null; engine.mp = null; engine.poses = 1; engine.pending = null; engine.pendingKey = null; engine.mode = 'VIDEO';
   offRevoke();
 }
-async function setNetMode(m){
+// 保存データを使う状態にする（なければ取り込む）。失敗したときは選択待ちに戻す
+async function fetchAndUse(){
   if(NET.busy) return;
-  if(state.phase==='analyzing'){ netShowErr('解析中は切り替えできません。終わってからお試しください。'); await netRender(); return; }
   NET.busy = true; netShowErr('');
-  document.querySelectorAll('input[name="net"]').forEach(i=>i.disabled = true);
+  el.netAsk.classList.add('hidden');
+  setStatus('busy','解析データを取り込み中…');
   try{
-    if(m==='offline'){
-      if(!(await offPresent())){
-        setStatus('busy','オフライン用のデータをダウンロード中…');
-        let shellErr = '';
-        try{ shellErr = await prepareOffline(false); }
-        catch(e){
-          console.warn('offline prepare failed', e);
-          el.netProg.classList.add('hidden');
-          netShowErr('ダウンロードできませんでした：'+(e.message||e)+(isWebOpen() ? '。電波のある場所でもう一度お試しください' : '')+'。オンラインのままにしています。');
-          m = 'online';
-        }
-        if(m==='offline' && shellErr) netShowErr('解析用のデータは保存できましたが、ツール本体の保存ができませんでした（'+shellErr+'）。');
-      }else if(!NET.shellOk){
-        try{ await cacheShell(); NET.shellOk = true; lsSet('motion.shell','1'); }catch(e){}
-      }
-    }else{
-      // オンラインに戻す：本体の保存（サービスワーカー）は止める。データの保存は残す（削除ボタンで消せる）
-      try{ if('serviceWorker' in navigator){ for(const r of await navigator.serviceWorker.getRegistrations()) await r.unregister(); } }catch(e){}
-      try{ if(offSupported()) await caches.delete(NET.SHELL); }catch(e){}
-      NET.shellOk = false; lsSet('motion.shell','0');
-    }
-    NET.mode = m; lsSet('motion.net', m);
+    const shellErr = await prepareOffline(false);
+    if(shellErr) netShowErr('解析用のデータは保存できましたが、ツール本体の保存ができませんでした（'+shellErr+'）。');
+    NET.mode = 'offline';
     await resetEngine();
+    NET.busy = false;
     await netRender();
     ensureEngine(el.model.value).catch(()=>{});
+  }catch(e){
+    console.warn('offline prepare failed', e);
+    el.netProg.classList.add('hidden');
+    netShowErr('取り込めませんでした：'+(e.message||e)+(isWebOpen() ? '。電波のある場所でもう一度お試しください。' : ''));
+    NET.mode = 'wait';
+    setStatus('err','解析データを取り込めていません');
   }finally{
     NET.busy = false;
-    document.querySelectorAll('input[name="net"]').forEach(i=>i.disabled = false);
+    await netRender();
   }
 }
 async function initNet(){
   NET.shellOk = lsGet('motion.shell')==='1';
-  let m = lsGet('motion.net')==='offline' ? 'offline' : 'online';
-  if(m==='offline' && !(await offPresent())){
-    m = 'online'; lsSet('motion.net','online');
-    netShowErr('保存したデータが端末から消えていたため、オンラインに戻しました。オフラインで使うには、もう一度切り替えてダウンロードしてください。');
+  if(!offSupported()){ NET.mode = 'online'; await netRender(); return; }
+  if(await offPresent()){
+    NET.mode = 'offline';
+    if(!NET.shellOk){ try{ await cacheShell(); NET.shellOk = true; lsSet('motion.shell','1'); }catch(e){} }
+  }else{
+    NET.mode = 'wait';
+    setStatus('', '解析データの取り込み方法を選んでください（画面上部）');
   }
-  NET.mode = m;
   await netRender();
 }
-document.querySelectorAll('input[name="net"]').forEach(i=>i.addEventListener('change',()=>{ if(i.checked) setNetMode(i.value); }));
+el.netGet.addEventListener('click', ()=>{ fetchAndUse(); });
+el.netSkip.addEventListener('click', async()=>{
+  if(NET.busy) return;
+  NET.mode = 'online'; netShowErr('');
+  await resetEngine(); await netRender();
+  ensureEngine(el.model.value).catch(()=>{});
+});
 el.netRefresh.addEventListener('click', async()=>{
   if(NET.busy || state.phase==='analyzing') return;
   NET.busy = true; netShowErr(''); setStatus('busy','データをダウンロードし直しています…');
@@ -1384,9 +1400,9 @@ el.netClear.addEventListener('click', async()=>{
     await resetEngine();
     await dropShell();
     if(offSupported()) await caches.delete(NET.CACHE);
-    NET.mode = 'online'; lsSet('motion.net','online'); netShowErr('');
-    await netRender(); ensureEngine(el.model.value).catch(()=>{});
-  }finally{ NET.busy = false; }
+    NET.mode = offSupported() ? 'wait' : 'online'; netShowErr('');
+    setStatus('', '解析データを削除しました。取り込み方法を選んでください（画面上部）');
+  }finally{ NET.busy = false; await netRender(); }
 });
 function setStatus(kind, text){
   el.status.className = 'status ' + (kind==='ok'?'ok':kind==='err'?'err':'');
@@ -1414,6 +1430,7 @@ async function createLandmarker(modelKey, delegate){
   });
 }
 function ensureEngine(modelKey){
+  if(NET.mode==='wait') return Promise.reject(new Error('先に、画面上部の「解析データ」で取り込み方法を選んでください'));
   if(engine.lm && engine.key===modelKey) return Promise.resolve();
   if(engine.pending && engine.pendingKey===modelKey) return engine.pending;
   engine.pendingKey = modelKey;
@@ -1612,7 +1629,7 @@ function updateClipUI(){
   const {start,end}=state.clip;
   el.clipStart.value=start; el.clipEnd.value=end;
   el.clipStartLabel.textContent=fmtSec(start); el.clipEndLabel.textContent=fmtSec(end);
-  updateSelBand();
+  updateSelBand(); if(state.multi) updatePickUI();
   el.clipSummary.textContent=`解析する長さ：${fmtSec(end-start)}（最大${MAX_CLIP_SEC}秒）` + ((end-start)>12 ? '　解析には1〜2分ほどかかることがあります。' : '');
   el.clipNote.textContent = state.duration>MAX_CLIP_SEC
     ? `この動画は${fmtSec(state.duration)}あります。解析できるのは最大${MAX_CLIP_SEC}秒なので、解析したい部分（歩いている部分など）を選んでください。`
@@ -1642,7 +1659,7 @@ function syncPlayButtons(){
 function selPlay(mode){
   const v=state.media; if(!v || state.phase!=='select') return;
   if(!v.paused && state.playMode===mode){ v.pause(); return; }
-  state.playMode=mode;
+  state.playMode=mode; cancelSeeks();
   if(mode==='range'){
     v.loop=false;
     if(v.currentTime<state.clip.start || v.currentTime>=state.clip.end-0.05) v.currentTime=state.clip.start;
@@ -1660,9 +1677,10 @@ function selTick(){
   const v=state.media; if(!v || !state.isVideo){ selRaf=0; return; }
   if(state.phase==='select'){
     if(!v.paused && state.playMode==='range' && v.currentTime>=state.clip.end-0.02){
+      cancelSeeks();
       if(state.loop) v.currentTime=state.clip.start; else { v.pause(); v.currentTime=state.clip.end; }
     }
-    const t=v.currentTime;
+    const t=(state.shownT!=null && v.paused) ? state.shownT : v.currentTime;   // 止まっているときは、実際に画面に出ているコマの時刻を表示する
     if(t!==selTick.last){
       selTick.last=t; el.selNow.textContent=fmtT(t);
       if(!state.selScrub) el.selSeek.value=t;
@@ -1686,16 +1704,50 @@ document.querySelectorAll('[data-nudge]').forEach(b=>b.addEventListener('click',
   const v=state.media; if(!v || state.phase!=='select') return;
   v.pause(); seekThrottled(Math.max(0, Math.min(state.duration, v.currentTime+(+b.dataset.nudge))));
 }));
-let seekBusy=false, seekPending=null;
+// 動画を指定の時刻へ動かす（スライダーを動かしている間は、最後の指定だけを順に実行する）
+// 端末によっては「動かしたのに絵が更新されない」「動かし終わりの通知が来ない」ことがあるため、
+// ① 実際に画面に出ているコマの時刻（shownT）が目標に近づいたかを確かめ、② 来ないときは少しずらして動かし直す
+let seekBusy=false, seekPending=null, seekTimer=0, seekTarget=0, seekTry=0;
+function cancelSeeks(){ clearTimeout(seekTimer); seekBusy=false; seekPending=null; }   // 再生など、ほかの操作で動かすとき
 function seekThrottled(t){
   const v=state.media; if(!v||!state.isVideo) return;
   if(seekBusy){ seekPending=t; return; }
-  seekBusy=true; v.currentTime=t;
+  startSeek(v,t,0);
+}
+function startSeek(v,t,tryN){
+  seekBusy=true; seekTarget=t; seekTry=tryN;
+  clearTimeout(seekTimer); seekTimer=setTimeout(()=>onSeekTimeout(v),900);
+  v.currentTime=t;
+}
+function onSeekTimeout(v){
+  if(state.media!==v){ seekBusy=false; return; }
+  if(seekTry<2) startSeek(v, seekTarget+(seekTry===0?0.002:-0.002), seekTry+1);   // 少しずらして動かし直す
+  else finishSeek();
+}
+function finishSeek(){
+  clearTimeout(seekTimer); seekBusy=false;
+  if(seekPending!=null){ const p=seekPending; seekPending=null; seekThrottled(p); }
+}
+// 実際に画面に出ているコマの時刻を追いかける（currentTime は「目標」であって、絵がそこにあるとは限らない）
+function trackShown(v){
+  state.shownT=v.currentTime;
+  if(typeof v.requestVideoFrameCallback==='function'){
+    const cb=(now,meta)=>{ if(state.media!==v) return; if(meta && isFinite(meta.mediaTime)) state.shownT=meta.mediaTime; v.requestVideoFrameCallback(cb); };
+    v.requestVideoFrameCallback(cb);
+  }else{
+    const f=()=>{ state.shownT=v.currentTime; };
+    v.addEventListener('seeked',f); v.addEventListener('timeupdate',f);
+  }
 }
 function wireVideoEvents(v){
+  trackShown(v);
   v.addEventListener('seeked',()=>{
-    seekBusy=false;
-    if(seekPending!=null){ const p=seekPending; seekPending=null; seekThrottled(p); }
+    if(!seekBusy) return;
+    if(typeof v.requestVideoFrameCallback!=='function' || Math.abs(state.shownT-seekTarget)<=0.15){ finishSeek(); return; }
+    v.requestVideoFrameCallback((now,meta)=>{          // 新しい絵が出るのを待って、目標のコマか確かめる
+      if(!seekBusy) return;
+      if(!meta || Math.abs(meta.mediaTime-seekTarget)<=0.15 || seekTry>=2) finishSeek();
+    });
   });
   v.addEventListener('play', ()=>{ el.playBtn.textContent='⏸ 一時停止'; syncPlayButtons(); });
   v.addEventListener('pause',()=>{
@@ -1705,7 +1757,7 @@ function wireVideoEvents(v){
     }
   });
   v.addEventListener('ended',()=>{   // 動画の最後まで来たとき：ループなら区間の先頭から再開
-    if(state.loop && ((state.phase==='select' && state.playMode==='range') || state.phase==='review')){ v.currentTime=state.clip.start; v.play().catch(()=>{}); }
+    if(state.loop && ((state.phase==='select' && state.playMode==='range') || state.phase==='review')){ cancelSeeks(); v.currentTime=state.clip.start; v.play().catch(()=>{}); }
   });
 }
 function onClipInput(which){
@@ -1718,11 +1770,11 @@ el.clipStart.addEventListener('input',()=>onClipInput('start'));
 el.clipEnd.addEventListener('input',()=>onClipInput('end'));
 el.setStartBtn.addEventListener('click',()=>{
   if(!state.media) return;
-  state.clip=normalizeClip(state.media.currentTime, state.clip.end, 'start'); updateClipUI();
+  state.clip=normalizeClip(state.shownT!=null ? state.shownT : state.media.currentTime, state.clip.end, 'start'); updateClipUI();
 });
 el.setEndBtn.addEventListener('click',()=>{
   if(!state.media) return;
-  state.clip=normalizeClip(state.clip.start, state.media.currentTime, 'end'); updateClipUI();
+  state.clip=normalizeClip(state.clip.start, state.shownT!=null ? state.shownT : state.media.currentTime, 'end'); updateClipUI();
 });
 
 // ===== 設定の読み取り =====
@@ -1746,10 +1798,17 @@ function seekAndWait(v,t){
     if(Math.abs(v.currentTime-t)<0.0005 && v.readyState>=2){ resolve(); return; }
     let done=false;
     const fin=()=>{ if(done) return; done=true; v.removeEventListener('seeked',onSeeked); clearTimeout(to); resolve(); };
+    let tries=0;
     const onSeeked=()=>{
       if(typeof v.requestVideoFrameCallback==='function'){
-        let r=false; const go=()=>{ if(!r){ r=true; fin(); } };
-        v.requestVideoFrameCallback(go); setTimeout(go,40);   // 新しいコマが表示されるのを少し待つ
+        const wait=()=>{
+          let r=false;
+          const go=(now,meta)=>{ if(r) return; r=true;
+            if(meta && isFinite(meta.mediaTime) && Math.abs(meta.mediaTime-t)>0.15 && ++tries<4) wait();   // 古い絵が出ているときは、次の絵を待つ
+            else fin(); };
+          v.requestVideoFrameCallback(go); setTimeout(()=>go(0,null),100);   // 新しいコマが表示されるのを少し待つ
+        };
+        wait();
       }else fin();
     };
     const to=setTimeout(fin,4000);
@@ -1807,7 +1866,7 @@ async function analyzePhoto(){
 
 async function analyzeVideo(){
   const v=state.media; const {start,end}=state.clip;
-  beginBusy(); v.controls=false; v.pause(); setProgress(0,'解析エンジンを準備中…');
+  beginBusy(); v.controls=false; v.pause(); cancelSeeks(); setProgress(0,'解析エンジンを準備中…');
   const cands=[]; let fps=START_FPS, adapted=false, per=0, hiddenMs=0;
   try{
     await ensureEngine(el.model.value);
@@ -1873,6 +1932,8 @@ function applyTarget(){
   }else{
     state.track=trackTarget(cs.map(c=>c.list), cs.map(c=>c.t), state.pick, state.W, state.H); state.track.people=people;
   }
+  state.track.multiFrames=cs.filter(c=>c.list.length>=2).length;
+  if(state.pick && state.isVideo && cs.length){ const a=cs[0].t, b=cs[cs.length-1].t; state.track.pickOutside = state.pick.t<a-0.3 || state.pick.t>b+0.3; }
   state.frames=cs.map((c,i)=>{ const k=state.track.sel[i]; return k>=0 ? {t:c.t, lm:c.list[k].lm, wl:c.list[k].wl} : {t:c.t, lm:null, wl:null}; });
 }
 function updatePickUI(){
@@ -1886,11 +1947,15 @@ function updatePickUI(){
     txt = state.pick
       ? `対象者：指定済み（${state.isVideo ? '動画の '+state.pick.t.toFixed(2)+' 秒の位置' : '写真'}で選んだ人）。変えるときは、画面の別の人をタップしてください。`
       : '対象者：未指定です。動画を一時停止して、対象者を画面でタップしてください。（このまま解析すると、いちばん大きく写っている人を自動で選びます）';
+    if(state.pick && state.isVideo && state.clip && (state.pick.t<state.clip.start-0.05 || state.pick.t>state.clip.end+0.05))
+      txt+=' ※選んだ時刻が、いまの解析区間の外です。区間の中の場面で選び直してください。';
   }else{
     txt = (tk && tk.usedPick ? '対象者：指定した人を追跡しました。' : '対象者：いちばん大きく写っている人を自動で選びました。')
         + ' 別の人にするときは、画面の薄い点線の人をタップしてください。';
     const w=[];
     if(tk && tk.people<2) w.push('複数の人は検出されませんでした。');
+    else if(tk && tk.multiFrames<0.3*tk.n) w.push(`2人以上を検出できたのは ${tk.multiFrames} / ${tk.n} コマだけです（人が小さい・重なっているなど）。対象者の追跡は、あまり当てになりません。`);
+    if(tk && tk.pickOutside) w.push('対象者を選んだ時刻が、解析した区間の外でした。区間の中の場面で、もう一度選んでください。');
     if(tk && tk.close>0) w.push(`近くに他の人がいる場面が ${tk.close} コマあり、取り違えの可能性があります。`);
     if(tk && tk.missing>0) w.push(`対象者を検出できなかったコマが ${tk.missing} コマあります。`);
     if(w.length) txt+=' '+w.join(' ');
@@ -1902,7 +1967,7 @@ function drawPickMarker(){                          // 解析前：タップし�
   if(state.phase!=='select' || !state.media) return;
   const c=octx(); c.clearRect(0,0,el.overlay.width,el.overlay.height);
   const p=state.pick; if(!p || !state.multi) return;
-  if(state.isVideo && Math.abs(state.media.currentTime-p.t)>0.25) return;   // 指定したコマの近くだけ表示
+  if(state.isVideo && Math.abs((state.shownT!=null ? state.shownT : state.media.currentTime)-p.t)>0.25) return;   // 指定したコマの近くだけ表示
   const x=p.x*state.W, y=p.y*state.H, r=Math.max(14,state.W/28);
   c.save(); c.lineWidth=Math.max(3,state.W/200); c.strokeStyle='#fde047'; c.fillStyle='rgba(253,224,71,.25)';
   c.beginPath(); c.arc(x,y,r,0,Math.PI*2); c.fill(); c.stroke();
@@ -1917,7 +1982,7 @@ el.stage.addEventListener('click',e=>{
   const r=el.stage.getBoundingClientRect(); if(!r.width||!r.height) return;
   const x=(e.clientX-r.left)/r.width, y=(e.clientY-r.top)/r.height;
   if(x<0||x>1||y<0||y>1) return;
-  state.pick={t:state.isVideo ? state.media.currentTime : 0, x, y};
+  state.pick={t:state.isVideo ? ((state.phase==='select' && state.shownT!=null) ? state.shownT : state.media.currentTime) : 0, x, y};   // 画面に実際に出ているコマの時刻
   if(state.phase==='review'){ applyTarget(); recompute(true); }
   updatePickUI(); drawPickMarker();
 });
@@ -2469,7 +2534,7 @@ el.saveBtn.addEventListener('click', async ()=>{
 async function saveStill(){
   const v = state.isVideo ? state.media : null;
   if(v){
-    v.pause();
+    v.pause(); cancelSeeks();
     const i0=Math.max(0, nearestIndex(v.currentTime));
     await seekAndWait(v, Math.max(0, state.times[i0]-0.03));      // いったん少しずらしてから
     await seekAndWait(v, state.times[i0]); await sleep(40);        // 骨格を求めたコマの時刻に正確に合わせる（動画の絵とずれない）
@@ -2727,7 +2792,7 @@ async function save3D(){
 }
 
 // ===== 起動時：解析エンジンを裏で準備 =====
-initNet().catch(e=>console.warn('initNet', e)).then(()=>ensureEngine(el.model.value)).catch(e=>{ console.error(e); });
+initNet().catch(e=>console.warn('initNet', e)).then(()=>{ if(NET.mode!=='wait') return ensureEngine(el.model.value); }).catch(e=>{ console.error(e); });
 el.model.addEventListener('change',()=>{ ensureEngine(el.model.value).catch(()=>{}); });
 // テスト用に内部を公開（画面の動作確認で使用）
 window.__app = {state, el, engine, V3, NET};
