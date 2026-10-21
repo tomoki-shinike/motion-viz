@@ -149,8 +149,17 @@ td.sc .badge{margin-left:0;margin-top:2px;font-size:11px;padding:1px 8px}
 /* 重ね合わせの画面は、下の調整つまみを動かしている間も見えるよう、画面の上に固定する（スマホでは高さを抑える） */
 .cmpsticky{position:sticky;top:0;z-index:20;background:var(--card);padding:6px 0 2px;margin:0 -2px;border-bottom:1px solid #e5e7eb}
 .cmpstage{position:relative;background:#000;border-radius:10px;overflow:hidden;touch-action:none;cursor:grab;text-align:center}
-.cmpstage canvas{display:block;margin:0 auto;width:auto;height:auto;max-width:100%;max-height:34vh}
+.cmpstage canvas{display:block;margin:0 auto;width:auto;height:auto;max-width:100%;max-height:30vh}
 @media (min-width:700px){ .cmpstage canvas{max-height:50vh} }
+.cmpsave .btn{flex:1 1 0}
+#cmpSaveInfo{font-size:12px;margin-top:3px;line-height:1.35}
+/* 「調整」つまみタブ：右の端に出し、押すと調整パネルが右から開く（動画の下に重ならない位置から） */
+.cmptab{position:fixed;right:0;top:var(--cmpTop,200px);z-index:31;margin-top:8px;padding:14px 7px;border:1px solid var(--accent);border-right:none;border-radius:12px 0 0 12px;background:var(--accent);color:#fff;font-weight:700;font-size:15px;cursor:pointer;box-shadow:-2px 2px 8px rgba(0,0,0,.2);transition:transform .22s ease}
+.cmptab span{writing-mode:vertical-rl;letter-spacing:.2em;display:block}
+.cmpdrawer{position:fixed;right:0;top:var(--cmpTop,200px);bottom:0;width:min(320px,82vw);z-index:30;background:var(--card);border-left:1px solid #cbd5e1;box-shadow:-4px 0 14px rgba(0,0,0,.18);padding:10px 12px 24px;overflow-y:auto;transform:translateX(105%);transition:transform .22s ease;visibility:hidden}
+#cmpSpacer{height:45vh}
+body.cmpopen .cmpdrawer{transform:none;visibility:visible}
+body.cmpopen .cmptab{transform:translateX(calc(-1 * min(320px,82vw)))}
 .cmpgrid{display:grid;grid-template-columns:auto 1fr 3.4em;gap:6px 10px;align-items:center}
 .cmpgrid label{font-size:13.5px;color:#334155;white-space:nowrap}
 .cmpgrid output{font-size:13px;color:#334155;text-align:right}
@@ -159,10 +168,15 @@ td.sc .badge{margin-left:0;margin-top:2px;font-size:11px;padding:1px 8px}
 .scrubwrap{position:relative;padding-top:26px;touch-action:pan-y}
 .scrubwrap .lptrack{position:absolute;left:0;right:0;top:calc(26px + 14px);height:8px;background:#e5e7eb;border-radius:4px}
 .scrubwrap .lpband{position:absolute;top:calc(26px + 14px);height:8px;background:#0f766e;border-radius:4px;opacity:.9;left:calc(12px + (100% - 24px)*var(--fa));width:calc((100% - 24px)*(var(--fb) - var(--fa)))}
+#selSeek{-webkit-appearance:none;appearance:none;background:transparent;position:relative;z-index:1;height:36px}
 #scrub{-webkit-appearance:none;appearance:none;background:transparent;position:relative;z-index:1;height:36px}
+#selSeek::-webkit-slider-runnable-track{height:8px;background:transparent}
 #scrub::-webkit-slider-runnable-track{height:8px;background:transparent}
+#selSeek::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;box-sizing:border-box;width:24px;height:24px;margin-top:-8px;border-radius:50%;background:var(--accent);border:3px solid #fff;box-shadow:0 0 0 1px #64748b}
 #scrub::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;box-sizing:border-box;width:24px;height:24px;margin-top:-8px;border-radius:50%;background:var(--accent);border:3px solid #fff;box-shadow:0 0 0 1px #64748b}
+#selSeek::-moz-range-track{height:8px;background:transparent}
 #scrub::-moz-range-track{height:8px;background:transparent}
+#selSeek::-moz-range-thumb{box-sizing:border-box;width:24px;height:24px;border-radius:50%;background:var(--accent);border:3px solid #fff;box-shadow:0 0 0 1px #64748b}
 #scrub::-moz-range-thumb{box-sizing:border-box;width:24px;height:24px;border-radius:50%;background:var(--accent);border:3px solid #fff;box-shadow:0 0 0 1px #64748b}
 .lpflag{position:absolute;top:0;z-index:2;width:38px;height:24px;margin-left:-19px;left:calc(12px + (100% - 24px)*var(--f));background:#0f766e;color:#fff;border-radius:6px;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;cursor:ew-resize;touch-action:none;box-shadow:0 1px 3px rgba(0,0,0,.3)}
 .lpflag::after{content:"";position:absolute;left:50%;top:100%;width:2px;height:16px;margin-left:-1px;background:#0f766e;pointer-events:none}
@@ -277,10 +291,17 @@ footer{max-width:760px;margin:0 auto;padding:0 14px 30px;font-size:12.5px;color:
       <select id="cmpSpeed" aria-label="再生の速さ"><option value="1">等速</option><option value="0.5">0.5倍速</option><option value="0.25">0.25倍速</option></select>
       <label class="check" style="min-height:38px"><input type="checkbox" id="cmpLoop" checked>ループ</label>
       </div>
+      <div class="ctrl cmpsave" style="margin-top:4px">
+        <button class="btn small primary" id="cmpSaveImg" type="button" disabled>💾 画像で保存</button>
+        <button class="btn small primary" id="cmpSaveVid" type="button" disabled>🎬 動画で保存</button>
+        <button class="btn small hidden" id="cmpRecCancel" type="button">録画を中止</button>
+      </div>
+      <div class="sub" id="cmpSaveInfo">動画の保存は、起点（0秒）から最後までを、実際の再生と同じ時間をかけて録画します。録画中は画面を切り替えないでください。</div>
     </div>
 
-    <div class="trkbox" style="margin-top:12px">
-      <div class="trkttl"><b>重ね方の調整</b>（動画Bの見え方を変えます。画面の上を指でなぞると、動画Bを動かせます）</div>
+    <button type="button" class="cmptab" id="cmpTab" aria-expanded="false" aria-controls="cmpDrawer"><span>調整</span></button>
+    <aside class="cmpdrawer" id="cmpDrawer" aria-label="重ね方の調整">
+      <div class="trkttl"><b>重ね方の調整</b><br><span class="sub">動画Bの見え方を変えます。画面の上を指でなぞると、動画Bを動かせます。</span></div>
       <div class="cmpgrid">
         <label for="cmpOp">動画Bの濃さ</label><input type="range" id="cmpOp" min="0" max="100" step="1" value="50"><output id="cmpOpV">50%</output>
         <label for="cmpSc">動画Bの大きさ</label><input type="range" id="cmpSc" min="30" max="250" step="1" value="100"><output id="cmpScV">100%</output>
@@ -296,18 +317,9 @@ footer{max-width:760px;margin:0 auto;padding:0 14px 30px;font-size:12.5px;color:
         <button class="btn small" id="cmpReset" type="button">大きさ・位置をリセット</button>
         <button class="btn small" id="cmpSwap" type="button">AとBを入れ替える</button>
       </div>
-    </div>
-
-    <div class="trkbox" style="margin-top:12px">
-      <div class="trkttl"><b>保存</b></div>
-      <div class="trkbtns" style="grid-template-columns:1fr 1fr">
-        <button class="btn small primary" id="cmpSaveImg" type="button" disabled>💾 今の画面を画像で保存</button>
-        <button class="btn small primary" id="cmpSaveVid" type="button" disabled>🎬 重ねた動画を保存</button>
-      </div>
-      <button class="btn small hidden" id="cmpRecCancel" type="button" style="margin-top:6px">録画を中止</button>
-      <div class="sub" id="cmpSaveInfo">動画は、起点（0秒）から最後までを、実際の再生と同じ時間をかけて録画します。録画中は画面を切り替えないでください。</div>
-    </div>
+    </aside>
     <div class="sub" style="margin-top:8px">動画はこの端末の中だけで処理され、外には送られません。顔が分かる動画を保存・共有するときは、ご本人の同意と取り扱いにご注意ください。</div>
+  <div id="cmpSpacer" aria-hidden="true"></div>
   </section>
 </main>
 
@@ -485,11 +497,11 @@ footer{max-width:760px;margin:0 auto;padding:0 14px 30px;font-size:12.5px;color:
         <button class="btn small primary" id="selPlayRange" type="button">▶ 選んだ区間を再生</button>
         <label class="check" style="min-height:38px"><input type="checkbox" id="loopSel" checked>ループ再生</label>
       </div>
-      <div class="seekline">
-        <div class="band"><i id="selBand"></i></div>
+      <div class="scrubwrap" id="clipWrap" style="--fa:0;--fb:1">
+        <div class="lptrack" aria-hidden="true"></div><div class="lpband" id="selBand" aria-hidden="true"></div>
         <input type="range" id="selSeek" min="0" max="1" step="0.01" value="0" aria-label="再生位置">
-        <i class="mk" id="mkStart"></i><i class="mk" id="mkEnd"></i>
-        <div class="seekhit" id="seekHit" role="presentation"></div>
+        <div class="lpflag lpA" id="clipFlagA" role="slider" aria-label="解析する区間の開始位置"><span>開始</span></div>
+        <div class="lpflag lpB" id="clipFlagB" role="slider" aria-label="解析する区間の終了位置"><span>終了</span></div>
       </div>
       <div class="ticks" id="selTicks"></div>
       <div class="timeinfo">
@@ -501,13 +513,14 @@ footer{max-width:760px;margin:0 auto;padding:0 14px 30px;font-size:12.5px;color:
           <button class="btn small" type="button" data-nudge="1">＋1秒</button>
         </span>
       </div>
-      <div class="sub" style="margin-top:4px"><b>区間の決め方</b>：上の帯を<b>1回タップ＝開始</b>、<b>もう1回タップ＝終了</b>です（3回目で選び直し）。帯をなぞって動画を動かし、指を離した位置が印になります。緑の帯が、いま選んでいる解析区間です（最大30秒）。<b>緑の印をつかんで左右に動かすと、区間を広げたり縮めたりできます。</b>細かく合わせるときは、「±0.1秒」で動画を動かして、下のボタンで開始・終了にできます。</div>
+      <div class="sub" style="margin-top:4px"><b>区間の決め方</b>：緑の<b>「開始」「終了」の旗</b>を左右にドラッグして、解析する区間（最大30秒）を決めます。丸いつまみ（または帯をタップ）で動画を動かして確認できます。細かく合わせるときは、「±0.1秒」で動画を動かして、下のボタンで開始・終了にできます。</div>
       <div class="timeinfo" style="margin-top:6px"><span>開始 <b id="clipStartLabel">0.0秒</b>　／　終了 <b id="clipEndLabel">0.0秒</b></span></div>
       <div class="hidden"><input type="range" id="clipStart" min="0" max="1" step="0.1" value="0"><input type="range" id="clipEnd" min="0" max="1" step="0.1" value="1"></div>
       <div class="note warn hidden" id="clipWarn" style="margin-top:6px"></div>
       <div class="row" style="margin-top:8px">
-        <button class="btn small" id="setStartBtn" type="button">今の位置を開始にする</button>
-        <button class="btn small" id="setEndBtn" type="button">今の位置を終了にする</button>
+        <button class="btn small" id="setStartBtn" type="button">⏮ 開始をここに</button>
+        <button class="btn small" id="setEndBtn" type="button">終了をここに ⏭</button>
+        <button class="btn small" id="clipAllBtn" type="button">全体に戻す</button>
       </div>
       <div class="sub" style="margin-top:6px" id="clipSummary"></div>
     </div>
@@ -631,7 +644,7 @@ footer{max-width:760px;margin:0 auto;padding:0 14px 30px;font-size:12.5px;color:
 </main>
 <footer>
   姿勢推定（画像から関節の位置を見つける技術）による<b>目安の値</b>です。診断や評価の根拠にはせず、経過を見る参考として使ってください。<br>
-  試作版 v0.20.0
+  試作版 v0.22.0
 </footer>
 
 <!-- ============================================================
@@ -1444,7 +1457,7 @@ const el = {
   reselectBtn:$('reselectBtn'), noteCard:$('noteCard'),
   whoNote:$('whoNote'), optTrackDbg:$('optTrackDbg'), dbgRow:$('dbgRow'), anchorBox:$('anchorBox'), anchorGrid:$('anchorGrid'), anchorInfo:$('anchorInfo'), pickBar:$('pickBar'), pickInfo:$('pickInfo'), pickClear:$('pickClear'),
   v3Move:$('v3Move'), v3Follow:$('v3Follow'), v3MoveRow:$('v3MoveRow'),
-  skelRow:$('skelRow'), skelBtn:$('skelBtn'), skelNote:$('skelNote'), selSeek:$('selSeek'), seekHit:$('seekHit'), mkStart:$('mkStart'), mkEnd:$('mkEnd'), clipWarn:$('clipWarn'), selBand:$('selBand'), selTicks:$('selTicks'), selNow:$('selNow'), selTotal:$('selTotal'), stageTime:$('stageTime')
+  skelRow:$('skelRow'), skelBtn:$('skelBtn'), skelNote:$('skelNote'), selSeek:$('selSeek'), clipWrap:$('clipWrap'), clipFlagA:$('clipFlagA'), clipFlagB:$('clipFlagB'), clipWarn:$('clipWarn'), selBand:$('selBand'), selTicks:$('selTicks'), selNow:$('selNow'), selTotal:$('selTotal'), stageTime:$('stageTime')
 };
 
 // ===== 状態 =====
@@ -1934,12 +1947,8 @@ function updateClipUI(){
 let selRaf=0;
 const fmtT = t => t.toFixed(2);
 function updateSelBand(){
-  const D=state.duration||1, {start,end}=state.clip, pend=state.markStart;
-  el.selBand.style.left=(start/D*100)+'%'; el.selBand.style.width=((end-start)/D*100)+'%';
-  el.selBand.closest('.seekline').classList.toggle('pending', !!pend);
-  el.mkStart.classList.toggle('pend', !!pend);
-  el.mkStart.style.left=((pend ? pend.t : start)/D*100)+'%';
-  el.mkEnd.style.left=(end/D*100)+'%'; el.mkEnd.classList.toggle('hidden', !!pend);
+  const D=state.duration||1, {start,end}=state.clip;
+  el.clipWrap.style.setProperty('--fa', (start/D).toFixed(5)); el.clipWrap.style.setProperty('--fb', (end/D).toFixed(5));
 }
 function buildTicks(){
   const D=state.duration; el.selTicks.textContent='';
@@ -1999,71 +2008,25 @@ el.selSeek.addEventListener('input',()=>{
   state.selScrub=true; v.pause(); seekThrottled(+el.selSeek.value);
 });
 el.selSeek.addEventListener('change',()=>{ state.selScrub=false; });
-// 帯のタップで区間を決める：1回目＝開始、2回目＝終了（3回目でまた開始から）。なぞると動画が動き、指を離した位置が印になる
-function seekHitTime(e){
-  const r=el.seekHit.getBoundingClientRect(); if(!r.width) return 0;
-  return Math.max(0, Math.min(1, (e.clientX-r.left)/r.width))*state.duration;
-}
-function applyMark(t){
-  const D=state.duration, minC=Math.min(MIN_CLIP_SEC, D);
-  state.clipMsg='';
-  if(!state.markStart){ state.markStart={t}; }
-  else{
-    let s=state.markStart.t, e=t; if(e<s){ const x=s; s=e; e=x; }
-    if(e-s>MAX_CLIP_SEC){ e=s+MAX_CLIP_SEC; state.clipMsg=`${MAX_CLIP_SEC}秒を超えるため、開始から${MAX_CLIP_SEC}秒の位置までにしました。`; }
-    if(e-s<minC){ e=Math.min(D,s+minC); if(e-s<minC) s=Math.max(0,e-minC); state.clipMsg=`短すぎるため、${fmtSec(minC)}の長さにしました。`; }
-    state.clip={start:Math.max(0,s), end:Math.min(D,e)}; state.markStart=null;
-  }
-  updateClipUI();
-}
-{ let down=false, drag=null, cand=null, x0=0;
-  // 区間の印（緑の線）の近くを押さえたときは、その印をつかんで動かす（区間が広がる・縮まる）
-  const GRAB_PX=22;
-  const markAt=e=>{
-    if(state.markStart || !state.duration) return null;
-    const r=el.seekHit.getBoundingClientRect(); if(!r.width) return null;
-    const xs=r.left+state.clip.start/state.duration*r.width, xe=r.left+state.clip.end/state.duration*r.width;
-    const ds=Math.abs(e.clientX-xs), de=Math.abs(e.clientX-xe);
-    if(Math.min(ds,de)>GRAB_PX) return null;
-    if(ds===de) return e.clientX<xs ? 'start' : 'end';
-    return ds<de ? 'start' : 'end';
-  };
-  const dragTo=(which,t)=>{
+// 区間の旗：ドラッグで開始・終了を動かす（帯のタップ・丸いつまみは、動画を動かすだけ）
+function clipDrag(which){
+  const flag= which==='A' ? el.clipFlagA : el.clipFlagB; let on=false;
+  const at=e=>{ const r=el.clipWrap.getBoundingClientRect(); if(!r.width) return null; return Math.max(0,Math.min(1,(e.clientX-r.left-12)/Math.max(1,r.width-24)))*state.duration; };
+  flag.addEventListener('pointerdown',e=>{ if(!state.media || state.phase!=='select') return; on=true; try{ flag.setPointerCapture(e.pointerId); }catch(_){} state.media.pause(); state.selScrub=true; e.preventDefault(); });
+  flag.addEventListener('pointermove',e=>{
+    if(!on) return; const t=at(e); if(t==null) return;
     const D=state.duration, minC=Math.min(MIN_CLIP_SEC, D);
     let {start,end}=state.clip; state.clipMsg='';
-    if(which==='start'){
-      start=Math.min(t, end-minC); if(end-start>MAX_CLIP_SEC){ start=end-MAX_CLIP_SEC; state.clipMsg=`区間は最大${MAX_CLIP_SEC}秒です（これ以上は広げられません）。`; }
-    }else{
-      end=Math.max(t, start+minC); if(end-start>MAX_CLIP_SEC){ end=start+MAX_CLIP_SEC; state.clipMsg=`区間は最大${MAX_CLIP_SEC}秒です（これ以上は広げられません）。`; }
-    }
+    if(which==='A'){ start=Math.min(t, end-minC); if(end-start>MAX_CLIP_SEC){ start=end-MAX_CLIP_SEC; state.clipMsg=`区間は最大${MAX_CLIP_SEC}秒です（これ以上は広げられません）。`; } }
+    else { end=Math.max(t, start+minC); if(end-start>MAX_CLIP_SEC){ end=start+MAX_CLIP_SEC; state.clipMsg=`区間は最大${MAX_CLIP_SEC}秒です（これ以上は広げられません）。`; } }
     state.clip={start:Math.max(0,start), end:Math.min(D,end)};
     updateClipUI();
-    return which==='start' ? state.clip.start : state.clip.end;
-  };
-  el.seekHit.addEventListener('pointerdown', e=>{
-    const v=state.media; if(!v || state.phase!=='select') return;
-    down=true; try{ el.seekHit.setPointerCapture(e.pointerId); }catch(x){}
-    state.selScrub=true; v.pause(); e.preventDefault();
-    cand=markAt(e); drag=null; x0=e.clientX;                 // 印の近くを押した：少し動かしたら「つかんで動かす」、動かさなければ「タップ」
-    const t=seekHitTime(e); el.selSeek.value=t; seekThrottled(t);
+    const tt=which==='A' ? state.clip.start : state.clip.end; el.selSeek.value=tt; seekThrottled(tt);
   });
-  el.seekHit.addEventListener('pointermove', e=>{
-    if(!down){ el.seekHit.style.cursor = markAt(e) ? 'ew-resize' : 'pointer'; return; }
-    const v=state.media; if(!v) return;
-    const t=seekHitTime(e);
-    if(!drag && cand && Math.abs(e.clientX-x0)>6) drag=cand;
-    if(drag){ const tt=dragTo(drag,t); el.selSeek.value=tt; seekThrottled(tt); }
-    else{ el.selSeek.value=t; seekThrottled(t); }
-  });
-  const end=e=>{
-    if(!down) return; down=false; state.selScrub=false;
-    const was=drag; drag=null; cand=null;
-    if(was) return;                                          // 印をつかんで動かしたときは、ここで終わり
-    if(state.media && state.phase==='select'){ const t=seekHitTime(e); el.selSeek.value=t; seekThrottled(t); applyMark(t); }
-  };
-  el.seekHit.addEventListener('pointerup', end);
-  el.seekHit.addEventListener('pointercancel', ()=>{ down=false; drag=null; cand=null; state.selScrub=false; });
+  const stop=()=>{ on=false; state.selScrub=false; };
+  flag.addEventListener('pointerup',stop); flag.addEventListener('pointercancel',stop);
 }
+clipDrag('A'); clipDrag('B');
 document.querySelectorAll('[data-nudge]').forEach(b=>b.addEventListener('click',()=>{
   const v=state.media; if(!v || state.phase!=='select') return;
   v.pause(); seekThrottled(Math.max(0, Math.min(state.duration, v.currentTime+(+b.dataset.nudge))));
@@ -2147,6 +2110,13 @@ el.setEndBtn.addEventListener('click',()=>{
   state.clip=normalizeClip(state.clip.start, t1, 'endclamp'); updateClipUI();
 });
 
+$('clipAllBtn').addEventListener('click',()=>{
+  if(!state.media) return;
+  state.markStart=null; state.clipMsg='';
+  state.clip=normalizeClip(0, state.duration, 'start'); if(state.duration>MAX_CLIP_SEC) state.clipMsg=`この動画は${MAX_CLIP_SEC}秒を超えるため、最初から${MAX_CLIP_SEC}秒までにしました。`;
+  updateClipUI();
+});
+
 // ===== 設定の読み取り =====
 const radio = name => document.querySelector(`input[name=${name}]:checked`).value;
 function syncSettingVisibility(){
@@ -2206,13 +2176,13 @@ document.addEventListener('visibilitychange',()=>{ if(!document.hidden && state.
 function beginBusy(){
   el.errorBox.classList.add('hidden');
   el.analyzeBtn.disabled=true; el.progressBox.classList.remove('hidden');
-  el.clipStart.disabled=el.clipEnd.disabled=true; el.setStartBtn.disabled=el.setEndBtn.disabled=true;
+  el.clipStart.disabled=el.clipEnd.disabled=true; el.setStartBtn.disabled=el.setEndBtn.disabled=$('clipAllBtn').disabled=true; el.clipWrap.style.pointerEvents='none';
   el.cancelBtn.disabled=false; state.phase='analyzing'; state.cancel=false; keepAwake(true);
 }
 function endBusy(){
   keepAwake(false);
   el.progressBox.classList.add('hidden'); el.analyzeBtn.disabled=false;
-  el.clipStart.disabled=el.clipEnd.disabled=false; el.setStartBtn.disabled=el.setEndBtn.disabled=false;
+  el.clipStart.disabled=el.clipEnd.disabled=false; el.setStartBtn.disabled=el.setEndBtn.disabled=$('clipAllBtn').disabled=false; el.clipWrap.style.pointerEvents='';
 }
 el.cancelBtn.addEventListener('click',()=>{ state.cancel=true; el.cancelBtn.disabled=true; setProgress(0,'中止しています…'); });
 el.analyzeBtn.addEventListener('click',()=>{
@@ -3998,30 +3968,6 @@ function proj3(p, W, H, S, cy){                                     // 回転し
   const y2=y0*cp-z1*sp, z2=y0*sp+z1*cp;
   return {x:W/2+x1*S, y:H/2-y2*S, d:z2};
 }
-// 追跡した物・ボールを3Dの位置にする：骨盤の位置を基準に、画面上のずれ（画素）×1画素あたりの長さ（m）で左右・上下を出す。奥行きは、いちばん近い手首の奥行きを使う（推定）
-let TRK3C=null;
-function trk3dPoints(){
-  if(!TRK.disp || !TRK.tt || !state.smoothed || !state.times) return null;
-  if(TRK3C && TRK3C.d===TRK.disp && TRK3C.sm===state.smoothed && TRK3C.zs===V3.zs) return TRK3C.out;
-  const fr=state.smoothed, n=fr.length, H=state.H, out=new Array(n).fill(null);
-  const s0=fr.map(f=>frameScale(f,H)), sm=medianOf(s0.filter(isFinite));
-  let zlast=null;
-  for(let i=0;i<n;i++){
-    const f=fr[i]; if(!f || !f.lm || !f.wl) continue;
-    const j=trkNearest(TRK.tt, state.times[i]), q=TRK.disp[j]; if(!q || q.x==null) continue;
-    const l23=f.lm[23], l24=f.lm[24]; if(!l23||!l24||l23.v<0.3||l24.v<0.3) continue;
-    const sc=isFinite(s0[i])?s0[i]:sm; if(!isFinite(sc)) continue;
-    const hx=(l23.x+l24.x)/2, hy=(l23.y+l24.y)/2, hw=mid3(to3(f.wl[23],V3.zs), to3(f.wl[24],V3.zs));
-    let best=1e9, bz=null;
-    for(const k of [15,16,19,20,21,22]){ const l=f.lm[k]; if(!l||l.v<0.3||!f.wl[k]) continue; const d=Math.hypot(l.x-q.x,l.y-q.y); if(d<best){ best=d; bz=to3(f.wl[k],V3.zs).z; } }
-    const near = best<0.2*H;
-    if(near) zlast=bz;
-    const z = near ? bz : (zlast!=null ? zlast : hw.z);
-    out[i]={x:hw.x+(q.x-hx)*sc, y:hw.y-(q.y-hy)*sc, z};
-  }
-  TRK3C={d:TRK.disp, sm:state.smoothed, zs:V3.zs, out};
-  return out;
-}
 function draw3D(ctx, W, H, idx, opt={}){
   ctx.save();
   ctx.fillStyle='#0b1118'; ctx.fillRect(0,0,W,H);
@@ -4079,21 +4025,6 @@ function draw3D(ctx, W, H, idx, opt={}){
       ctx.stroke();
     }
     ctx.setLineDash([]); ctx.globalAlpha=1;
-  }
-  const tp=trk3dPoints();                                                             // 追跡した物・ボールの軌跡
-  if(tp){
-    const col=TRK_COL[TRK.kind]||'#e11d9a', upto=el.trailLen.value==='upto', last=upto ? idx : tp.length-1;
-    const pr=i=>{ const o=mv ? (rm.pos[i]||off) : off, oy=jp ? ((rm.pos[i]||{}).y||0) : 0, a=tp[i]; return proj3({x:a.x+o.x,y:a.y+oy,z:a.z+o.z},W,H,S,cy); };
-    ctx.save(); ctx.lineJoin='round'; ctx.lineCap='round';
-    for(const pass of [0,1]){
-      ctx.strokeStyle = pass===0 ? 'rgba(255,255,255,.85)' : col; ctx.lineWidth = Math.max(2,fs/7)*(pass===0?1.8:1);
-      ctx.beginPath(); let st=false;
-      for(let i=0;i<=Math.min(last,tp.length-1);i++){ if(!tp[i]){ st=false; continue; } const q=pr(i); if(!st){ ctx.moveTo(q.x,q.y); st=true; } else ctx.lineTo(q.x,q.y); }
-      ctx.stroke();
-    }
-    let c=Math.min(last,tp.length-1); while(c>=0 && !tp[c]) c--;
-    if(c>=0){ const q=pr(c); ctx.fillStyle=col; ctx.strokeStyle='#fff'; ctx.lineWidth=Math.max(1.5,fs/9); ctx.beginPath(); ctx.arc(q.x,q.y,Math.max(4,fs*0.38),0,Math.PI*2); ctx.fill(); ctx.stroke(); }
-    ctx.restore();
   }
   if(jp && off.y>0.02){                                                              // 跳び上がり：骨盤の真下の床と結ぶ
     const hp=mid3(P[23],P[24]), A=proj3({x:hp.x,y:gy,z:hp.z},W,H,S,cy), B=proj3(hp,W,H,S,cy);
@@ -4276,7 +4207,7 @@ function cmpPlay(){
 function cmpEnable(){
   const both=cmpBoth();
   for(const x of [CMP.scrub, CMP.prev, CMP.next, CMP.play, CMP.saveImg, CMP.saveVid]) x.disabled=!both || CMP.rec;
-  if(both){ cmpRange(); CMP.scrub.min=CMP.tmin; CMP.scrub.max=CMP.tmax; }
+  if(both){ const first=!CMP.bothSeen; CMP.bothSeen=true; cmpRange(); CMP.scrub.min=CMP.tmin; CMP.scrub.max=CMP.tmax; if(first) setTimeout(cmpToStage,50); }
   CMP.guide.textContent = both ? '起点が0秒です。下の再生バーで、起点の前後を行き来できます。動画Bの濃さ・大きさ・位置を調整して、動きを見比べてください。'
     : '動画Aと動画Bの起点を決めると、ここに重ねて表示されます。';
 }
@@ -4392,11 +4323,29 @@ CMP.saveVid.addEventListener('click',async()=>{
 });
 CMP.recCancel.addEventListener('click',()=>{ CMP.recCancelFlag=true; });
 // モードの切り替え
+// 「調整」つまみタブ：パネルは、固定した動画・操作部分の下から開く
+function cmpToStage(){                                    // 重ねた画面を、画面の上に固定される位置まで上げる
+  const st=document.querySelector('.cmpsticky'); if(!st) return;
+  const r=st.getBoundingClientRect(); if(r.top>1) window.scrollBy(0, r.top);
+}
+function cmpDrawerPos(){
+  const st=document.querySelector('.cmpsticky'); if(!st) return;
+  const top=Math.max(0, Math.round(st.getBoundingClientRect().bottom));
+  document.documentElement.style.setProperty('--cmpTop', Math.min(top, Math.round(innerHeight*0.7))+'px');
+}
+function cmpDrawer(open){
+  document.body.classList.toggle('cmpopen', !!open); $('cmpTab').setAttribute('aria-expanded', open?'true':'false');
+  if(open) cmpToStage();
+  cmpDrawerPos();
+}
+$('cmpTab').addEventListener('click',()=>cmpDrawer(!document.body.classList.contains('cmpopen')));
+for(const ev of ['scroll','resize']) window.addEventListener(ev, ()=>{ if(CMP.show) cmpDrawerPos(); }, {passive:true});
+new ResizeObserver(()=>cmpDrawerPos()).observe(document.querySelector('.cmpsticky'));
 function setMode(m){
   const cmp=m==='cmp';
   $('anaMain').classList.toggle('hidden', cmp); $('cmpMain').classList.toggle('hidden', !cmp);
   $('modeAna').classList.toggle('on', !cmp); $('modeCmp').classList.toggle('on', cmp);
-  CMP.show=cmp;
+  CMP.show=cmp; cmpDrawer(false);
   if(cmp){ if(state.media && state.isVideo) state.media.pause(); cmpEnable(); cmpStart(); }
   else{ cmpPause(); }
   window.scrollTo({top:0});
@@ -4405,7 +4354,7 @@ $('modeAna').addEventListener('click',()=>setMode('ana'));
 $('modeCmp').addEventListener('click',()=>setMode('cmp'));
 cmpOut();
 
-window.__app = {CMP, setMode, REC, loopRange, state, el, engine, V3, NET, TRK, trk, trkMatch, trkMakeTpl, trkFit, rootMotion, estimateDepth, trk3d:trk3dPoints};
+window.__app = {CMP, setMode, REC, loopRange, state, el, engine, V3, NET, TRK, trk, trkMatch, trkMakeTpl, trkFit, rootMotion, estimateDepth};
 </script>
 </body>
 </html>
