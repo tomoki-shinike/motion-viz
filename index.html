@@ -558,6 +558,8 @@ footer{max-width:760px;margin:0 auto;padding:0 14px 30px;font-size:12.5px;color:
         <select id="trkSize"><option value="s" selected>小（先端・小さなボール）</option><option value="m">中</option><option value="l">大（大きなボール）</option></select>
         <label for="trkFps">追う細かさ</label>
         <select id="trkFps"><option value="30" selected>1秒に30コマ（ふつう）</option><option value="60">1秒に60コマ（速い動き・時間がかかる）</option><option value="15">1秒に15コマ（ゆっくりな動き）</option></select>
+        <label for="trkPull">曲線への補正</label>
+        <select id="trkPull"><option value="auto" selected>おまかせ（ボール＝標準／先端＝しない）</option><option value="mid">標準（指定した点を通る曲線から大きく外れた点だけ直す）</option><option value="loose">ゆるめ（かなり外れた点だけ直す）</option><option value="curve">曲線だけ（追跡は使わず、指定した点をなめらかにつなぐ）</option><option value="off">しない（追跡の結果そのまま）</option></select>
         <label for="trkFitMode" class="trkfit hidden" id="trkFitLbl">放物線の当てはめ</label>
         <select id="trkFitMode" class="trkfit hidden"><option value="auto" selected>自動で探す（おすすめ）</option><option value="all">全区間に当てはめる</option></select>
       </div>
@@ -787,7 +789,7 @@ footer{max-width:760px;margin:0 auto;padding:0 14px 30px;font-size:12.5px;color:
 <footer>
   姿勢推定（画像から関節の位置を見つける技術）による<b>目安の値</b>です。診断や評価の根拠にはせず、経過を見る参考として使ってください。<br>
   <a href="#" id="netManage" style="color:var(--accent)">解析データの管理</a>（保存状況の確認・取り直し・削除）<br>
-  試作版 v0.30.3
+  試作版 v0.31.0
 </footer>
 
 <!-- ============================================================
@@ -3039,7 +3041,7 @@ const trkCv = document.createElement('canvas');
 const trkCtx = trkCv.getContext('2d', {willReadFrequently:true});
 const trk = {
   row:$('trkRow'), open:$('trkOpen'), box:$('trkBox'), pick:$('trkPick'), run:$('trkRun'), clear:$('trkClear'), cancel:$('trkCancel'),
-  size:$('trkSize'), fps:$('trkFps'), fitMode:$('trkFitMode'), fitLbl:$('trkFitLbl'), undo:$('trkUndo'), scenes:$('trkScenes'), msg:$('trkMsg'), res:$('trkRes')
+  size:$('trkSize'), fps:$('trkFps'), pull:$('trkPull'), fitMode:$('trkFitMode'), fitLbl:$('trkFitLbl'), undo:$('trkUndo'), scenes:$('trkScenes'), msg:$('trkMsg'), res:$('trkRes')
 };
 function trkKind(){ const r=document.querySelector('input[name="trkKind"]:checked'); return r ? r.value : 'tip'; }
 function trkTimes(){
@@ -3257,7 +3259,7 @@ async function trkRunAll(){
       await sleep(0);
       if(TRK.cancel) break;
     }
-    TRK.pts=res; trkBuild();
+    TRK.raw=res; TRK.pts=trkPull(res); trkBuild();
     trk.msg.textContent = TRK.cancel ? '中止しました（途中までの結果を表示しています）。' : '';
   }catch(e){
     console.error(e); trk.msg.textContent='追跡に失敗しました：'+(e&&e.message?e.message:e);
@@ -3268,6 +3270,41 @@ async function trkRunAll(){
   setTrkPicking(TRK.open); trkRender(); state.dirty=true; requestRedraw();
 }
 // --- 結果の整理（表示用の線・放物線） ---
+// 指定した点（手でタップした場所）を必ず通る、なめらかな曲線を作り、追跡の結果がそこから大きく外れた点を曲線の側へ引き寄せる。
+// 曲線は、時間に対するなめらかな補間（エルミート補間）。指定した点が3つ以上あるときだけ使う。
+function trkPull(res){
+  let mode=trk.pull.value; if(mode==='auto') mode = TRK.kind==='ball' ? 'mid' : 'off';
+  const N=res.length, out=res.map(p=>p?{...p}:p);
+  const S=[]; res.forEach((p,i)=>{ if(p&&p.m&&p.x!=null) S.push({t:TRK.tt[i],x:p.x,y:p.y}); });
+  if(mode==='off' || S.length<3) return out;
+  const n=S.length, mx=[], my=[];
+  // 各点での傾き：隣の2点とあわせた放物線の傾き（飛んでいるボールのような放物線の動きなら、ぴったり合う）
+  const slope=(k,c)=>{
+    const i1=Math.min(Math.max(k,1),n-2), P=[S[i1-1],S[i1],S[i1+1]], t=S[k].t;
+    const [t0,t1,t2]=[P[0].t,P[1].t,P[2].t], v=P.map(q=>q[c]);
+    const w0=(2*t-t1-t2)/((t0-t1)*(t0-t2)), w1=(2*t-t0-t2)/((t1-t0)*(t1-t2)), w2=(2*t-t0-t1)/((t2-t0)*(t2-t1));
+    return v[0]*w0+v[1]*w1+v[2]*w2;
+  };
+  for(let k=0;k<n;k++){ mx.push(slope(k,'x')); my.push(slope(k,'y')); }
+  const curve=t=>{
+    let k=0; while(k<n-2 && t>S[k+1].t) k++;
+    const a=S[k], b=S[k+1], h=(b.t-a.t)||1, u=(t-a.t)/h, u2=u*u, u3=u2*u;
+    const h00=2*u3-3*u2+1, h10=u3-2*u2+u, h01=-2*u3+3*u2, h11=u3-u2;
+    return {x:h00*a.x+h10*h*mx[k]+h01*b.x+h11*h*mx[k+1], y:h00*a.y+h10*h*my[k]+h01*b.y+h11*h*my[k+1]};
+  };
+  const tol = mode==='curve' ? 0 : (mode==='loose' ? 0.03 : 0.012)*state.W;
+  const t0=S[0].t, t1=S[n-1].t;
+  for(let i=0;i<N;i++){
+    const t=TRK.tt[i]; if(t<t0-1e-6 || t>t1+1e-6) continue;                 // 指定した点の外側は、追跡の結果のまま
+    const p=out[i]; if(p && p.m) continue;
+    const c=curve(t);
+    if(!p || p.x==null){ out[i]={x:c.x, y:c.y, s:0.2, c:true, h:p?p.h:false}; continue; }   // 見失ったコマも曲線で埋める
+    const d=Math.hypot(p.x-c.x, p.y-c.y);
+    if(d>tol){ const f = (tol>0 && d<=3*tol) ? tol/d : 0;     // 大きく外れた点（見失って別の場所を追っている）は、曲線の位置に置き換える
+      p.x=c.x+(p.x-c.x)*f; p.y=c.y+(p.y-c.y)*f; p.c=true; }
+  }
+  return out;
+}
 function trkBuild(){
   const N=TRK.tt.length, pts=TRK.pts;
   TRK.disp=pts.map(p=>p&&p.x!=null?{x:p.x,y:p.y}:null);
@@ -3492,6 +3529,7 @@ document.querySelectorAll('input[name="trkKind"]').forEach(i=>i.addEventListener
   TRK.kind=trkKind(); if(TRK.pts){ TRK.pts=null; TRK.disp=null; TRK.fit=null; }   // 種類を変えたら、追跡は取り直し
   trk.size.value = TRK.kind==='ball' ? 'm' : 's'; trkRender(); state.dirty=true; requestRedraw();
 }));
+trk.pull.addEventListener('change',()=>{ if(TRK.raw && TRK.pts && TRK.tt){ TRK.pts=trkPull(TRK.raw); trkBuild(); trkRender(); state.dirty=true; requestRedraw(); } });
 trk.fitMode.addEventListener('change',()=>{ if(TRK.pts && TRK.kind==='ball'){ TRK.fit=trkFit(); trkRender(); state.dirty=true; requestRedraw(); } });
 function trkNextScene(t){                                     // タップしたら、次の（まだ指定していない）場面へ自動で移動する
   const ts=trkSceneTimes(); let k=ts.findIndex(x=>Math.abs(x-t)<0.05);
@@ -4625,7 +4663,7 @@ $('modeAna').addEventListener('click',()=>setMode('ana'));
 $('modeCmp').addEventListener('click',()=>setMode('cmp'));
 cmpOut();
 
-window.__app = {TOUR, CMP, setMode, REC, loopRange, state, el, engine, V3, NET, TRK, trk, trkMatch, trkMakeTpl, trkFit, rootMotion, estimateDepth};
+window.__app = {trkPull, TOUR, CMP, setMode, REC, loopRange, state, el, engine, V3, NET, TRK, trk, trkMatch, trkMakeTpl, trkFit, rootMotion, estimateDepth};
 </script>
 </body>
 </html>
