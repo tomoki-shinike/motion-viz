@@ -201,6 +201,7 @@ body.manualopen .manual{transform:none;visibility:visible}
 .manual summary{font-weight:700;cursor:pointer}
 .manual ul{margin:6px 0 2px;padding-left:20px;font-size:14px;line-height:1.6}
 .manual .term{color:var(--sub);font-size:12.5px}
+#whoNote{display:none}
 .sidedrawer .sdhead{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
 body.shootopen #shootDrawer{transform:none;visibility:visible}
 body.shootopen #shootTab, body.saveopen #saveTab{transform:translateX(min(380px,90vw))}
@@ -437,8 +438,8 @@ footer{max-width:760px;margin:0 auto;padding:0 14px 30px;font-size:12.5px;color:
     <li>細かく合わせるときは「±0.1秒」で動画を動かして、下のボタンで開始・終了にできます。</li>
     <li>長い動画でも、解析できるのは最大30秒です。</li>
     <li>解析後も、同じバーで「繰り返し再生する範囲」を決められます。</li></ul></details>
-  <details><summary>④ 複数人が写っているとき・ボールや道具を追うとき</summary><ul>
-    <li>「撮影方法」タブで「複数人」を選ぶと、解析前に対象の人をタップして指定します。</li>
+  <details><summary>④ 対象者を指定するとき・ボールや道具を追うとき</summary><ul>
+    <li>「撮影方法」タブの「対象者の決め方」で「対象者を指定する」を選ぶと、解析前に対象の人をタップして指定します。複数人が写っているときのほか、1人でも対象者をはっきり決めたいときに使えます。</li>
     <li>ボールや道具は、動画の中で追いたい点をタップします。タップすると次の場面へ自動で進みます。「場面」ボタンで、等間隔の5つの場面に動かせます。1か所でも追えますが、隠れる・ずれるときは場面を増やして指定すると正確です（✓は指定済み）。</li>
     <li>追跡は、画像の見た目の特徴をたどる方法（テンプレートマッチング）です。背景と似た色だと外れやすいので、目立つものが向いています。</li></ul></details>
   <details><summary>⑤ 結果の見方</summary><ul>
@@ -769,12 +770,12 @@ footer{max-width:760px;margin:0 auto;padding:0 14px 30px;font-size:12.5px;color:
       </div>
     </div>
     <div class="field" id="whoField">
-      <span class="lab">写っている人数</span>
+      <span class="lab">対象者の決め方</span>
       <div class="seg">
-        <label><input type="radio" name="who" value="one" checked><span>1人だけ</span></label>
-        <label><input type="radio" name="who" value="multi"><span>複数人が写っている</span></label>
+        <label><input type="radio" name="who" value="one" checked><span>自動</span></label>
+        <label><input type="radio" name="who" value="multi"><span>対象者を指定する</span></label>
       </div>
-      <div class="sub" id="whoNote" style="margin-top:4px">「複数人」にすると、解析前に対象者をタップして指定します（動画は、区間の中の5つのコマに目印をつけます）。</div>
+      <div class="sub" id="whoNote" style="margin-top:4px"></div>
     </div>
     <div class="field">
       <span class="lab">解析の精度</span>
@@ -789,7 +790,7 @@ footer{max-width:760px;margin:0 auto;padding:0 14px 30px;font-size:12.5px;color:
 <footer>
   姿勢推定（画像から関節の位置を見つける技術）による<b>目安の値</b>です。診断や評価の根拠にはせず、経過を見る参考として使ってください。<br>
   <a href="#" id="netManage" style="color:var(--accent)">解析データの管理</a>（保存状況の確認・取り直し・削除）<br>
-  試作版 v0.31.0
+  試作版 v0.31.2
 </footer>
 
 <!-- ============================================================
@@ -2899,7 +2900,7 @@ document.querySelectorAll('input[name="who"]').forEach(i=>i.addEventListener('ch
   el.whoNote.textContent = state.multi
     ? (state.isVideo ? '解析する区間を選ぶと、下に5つのコマが出ます。それぞれで対象者をタップして目印をつけてください（いないコマは「いない」）。'
                      : '写真の中の対象者を、画面でタップしてください（最大4人まで検出）。解析のあとでも、画面の人をタップして選び直せます。')
-    : '1人だけが写っている動画の設定です。';
+    : '自動で対象者を決めます（画面に1人だけ写っている動画向けです）。';
   if(state.phase==='review') el.whoNote.textContent += '（人数の設定の変更は、次に解析するときから反映されます）';
   updatePickUI(); drawPickMarker(); scheduleAnchors();
 }));
