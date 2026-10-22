@@ -170,6 +170,10 @@ td.sc .badge{margin-left:0;margin-top:2px;font-size:11px;padding:1px 8px}
 /* 調整パネルを開いている間は、動画の表示を少し小さくして、パネルの項目が全部（スクロールなしで）見えるようにする */
 @media (max-width:699px){ body.cmpopen .cmpstage canvas{max-height:18vh} }
 body.cmpopen #cmpSaveInfo:not(.rec),body.cmpopen #cmpTime{display:none}
+/* 再生中のブレ対策：再生中に毎コマ書き換わる文字の高さを固定し、スクロール位置の自動補正（スクロールアンカー）を切る */
+#cmpTime{font-size:12px;line-height:1.4;height:2.8em;overflow:hidden;font-variant-numeric:tabular-nums}
+html:has(#cmpMain:not(.hidden)), #cmpMain{overflow-anchor:none}
+.cmpslot .sub{min-height:1.5em}
 /* 左の端のつまみタブ（「調整」「撮影方法」で同じ大きさ・縦書き）と、そこから開くパネル */
 .sidetab{position:fixed;left:0;top:var(--tabTop,140px);z-index:31;width:40px;min-height:96px;padding:10px 0;display:flex;align-items:center;justify-content:center;border:1px solid var(--accent);border-left:none;border-radius:0 12px 12px 0;background:var(--accent);color:#fff;font-weight:700;font-size:17px;flex-direction:column;line-height:1.18;cursor:pointer;box-shadow:2px 2px 8px rgba(0,0,0,.2);transition:transform .22s ease}
 .sidetab span{display:block}
@@ -254,6 +258,9 @@ body[data-cmp=adj] #cmpDrawer{transform:none;visibility:visible}
 .lpflag::after{content:"";position:absolute;left:50%;top:100%;width:2px;height:16px;margin-left:-1px;background:#0f766e;pointer-events:none}
 .lpflag.lpA{--f:var(--fa)}
 .lpflag.lpB{--f:var(--fb)}
+#trkRow{background:#e8f3f1;border:1px solid #a8d3cd;border-radius:10px;padding:8px 10px}
+#trkRow .btn{background:#fff;border-color:#7fbdb4;color:#0f5f58;font-weight:700}
+.trkbox{background:#f1f8f7!important;border-color:#a8d3cd!important}
 .trkbox{margin-top:8px;border:1px solid #d9e0ea;border-radius:10px;padding:12px;background:#f8fafc;font-size:14px;display:flex;flex-direction:column;gap:10px}
 .trkttl{font-size:13.5px}
 .trkkind{display:grid;grid-template-columns:1fr 1fr;gap:8px}
@@ -513,7 +520,7 @@ footer{max-width:760px;margin:0 auto;padding:0 14px 30px;font-size:12.5px;color:
       <div class="stagetime hidden" id="stageTime"></div>
     </div>
     <div class="row hidden" id="skelRow" style="margin-top:8px">
-      <button class="btn small" id="skelBtn" type="button" aria-pressed="true">🦴 スティックピクチャーを隠す</button>
+      <button class="btn small" id="skelBtn" type="button" aria-pressed="true">スティックピクチャーを隠す</button>
       <span class="sub" id="skelNote"></span>
     </div>
     <div id="videoCtrl" class="hidden" style="margin-top:10px">
@@ -535,11 +542,6 @@ footer{max-width:760px;margin:0 auto;padding:0 14px 30px;font-size:12.5px;color:
         <div class="rknob rB" id="lpB" role="slider" aria-label="繰り返し再生の終了位置">終</div>
       </div>
       <input type="range" id="scrub" min="0" max="1" step="0.01" value="0" class="hidden" aria-hidden="true" tabindex="-1">
-      <div class="ctrl" style="margin-top:6px">
-        <button class="btn small" id="loopSetA" type="button">⏮ 開始をここに</button>
-        <button class="btn small" id="loopSetB" type="button">終了をここに ⏭</button>
-        <button class="btn small" id="loopAll" type="button">全体に戻す</button>
-      </div>
       <div class="sub" id="loopInfo"></div>
     </div>
     <div class="row hidden" id="trkRow" style="margin-top:8px">
@@ -610,11 +612,6 @@ footer{max-width:760px;margin:0 auto;padding:0 14px 30px;font-size:12.5px;color:
       <div class="timeinfo" style="margin-top:6px"><span>開始 <b id="clipStartLabel">0.0秒</b>　／　終了 <b id="clipEndLabel">0.0秒</b></span></div>
       <div class="hidden"><input type="range" id="clipStart" min="0" max="1" step="0.1" value="0"><input type="range" id="clipEnd" min="0" max="1" step="0.1" value="1"></div>
       <div class="note warn hidden" id="clipWarn" style="margin-top:6px"></div>
-      <div class="row" style="margin-top:8px">
-        <button class="btn small" id="setStartBtn" type="button">⏮ 開始をここに</button>
-        <button class="btn small" id="setEndBtn" type="button">終了をここに ⏭</button>
-        <button class="btn small" id="clipAllBtn" type="button">全体に戻す</button>
-      </div>
       <div class="sub" style="margin-top:6px" id="clipSummary"></div>
     </div>
 
@@ -628,7 +625,7 @@ footer{max-width:760px;margin:0 auto;padding:0 14px 30px;font-size:12.5px;color:
           <span class="sub" id="progressText">準備中…</span>
           <button class="btn small" id="cancelBtn" type="button">中止</button>
         </div>
-        <div class="sub" style="margin-top:4px">解析中は画面を消さず、他のアプリに切り替えないでください。端末に負担がかかりすぎないよう、少し休みながら進めます。</div>
+        <div class="sub" style="margin-top:4px">解析中は画面を消さず、他のアプリに切り替えないでください。端末に負担がかかりすぎないよう、少し休みながら進めます。<b>解析の進みがとても遅いときは、ページを更新するか、開き直して、もう一度行ってください。</b>（スマホで起こりやすい症状です）。</div>
       </div>
       <div class="note err hidden" id="errorBox"></div>
     </div>
@@ -790,7 +787,7 @@ footer{max-width:760px;margin:0 auto;padding:0 14px 30px;font-size:12.5px;color:
 <footer>
   姿勢推定（画像から関節の位置を見つける技術）による<b>目安の値</b>です。診断や評価の根拠にはせず、経過を見る参考として使ってください。<br>
   <a href="#" id="netManage" style="color:var(--accent)">解析データの管理</a>（保存状況の確認・取り直し・削除）<br>
-  試作版 v0.29.1
+  試作版 v0.30.1
 </footer>
 
 <!-- ============================================================
@@ -1583,7 +1580,6 @@ const el = {
   file:$('file'), fileInfo:$('fileInfo'), stage:$('stage'), overlay:$('overlay'), stageCard:$('stageCard'), stageTitle:$('stageTitle'),
   clipBox:$('clipBox'), clipNote:$('clipNote'), clipStart:$('clipStart'), clipEnd:$('clipEnd'),
   clipStartLabel:$('clipStartLabel'), clipEndLabel:$('clipEndLabel'), clipSummary:$('clipSummary'),
-  setStartBtn:$('setStartBtn'), setEndBtn:$('setEndBtn'),
   analyzeBtn:$('analyzeBtn'), progressBox:$('progressBox'), progressBar:$('progressBar'), progressText:$('progressText'),
   cancelBtn:$('cancelBtn'), errorBox:$('errorBox'),
   recBox:$('recBox'), recRange:$('recRange'), recWith3d:$('recWith3d'), recBlack:$('recBlack'), recBtn:$('recBtn'), recCancel:$('recCancel'), recInfo:$('recInfo'),
@@ -1599,8 +1595,7 @@ const el = {
   sideField:$('sideField'), dirField:$('dirField'),
   netDesc:$('netDesc'), netProg:$('netProg'), netBar:$('netBar'), netProgText:$('netProgText'), netErr:$('netErr'), netBtns:$('netBtns'),
   netRefresh:$('netRefresh'), netClear:$('netClear'), netAsk:$('netAsk'), netGet:$('netGet'), netSkip:$('netSkip'),
-  selPlayAll:$('selPlayAll'), selPlayRange:$('selPlayRange'), loopSel:$('loopSel'), loopRes:$('loopRes'), scrubWrap:$('scrubWrap'), lpA:$('lpA'), lpB:$('lpB'), loopInfo:$('loopInfo'), loopSetA:$('loopSetA'), loopSetB:$('loopSetB'), loopAll:$('loopAll'),
-  reselectBtn:$('reselectBtn'), noteCard:$('noteCard'),
+  selPlayAll:$('selPlayAll'), selPlayRange:$('selPlayRange'), loopSel:$('loopSel'), loopRes:$('loopRes'), scrubWrap:$('scrubWrap'), lpA:$('lpA'), lpB:$('lpB'), loopInfo:$('loopInfo'), reselectBtn:$('reselectBtn'), noteCard:$('noteCard'),
   whoNote:$('whoNote'), optTrackDbg:$('optTrackDbg'), dbgRow:$('dbgRow'), anchorBox:$('anchorBox'), anchorGrid:$('anchorGrid'), anchorInfo:$('anchorInfo'), pickBar:$('pickBar'), pickInfo:$('pickInfo'), pickClear:$('pickClear'),
   v3Move:$('v3Move'), v3Follow:$('v3Follow'), v3MoveRow:$('v3MoveRow'),
   skelRow:$('skelRow'), skelBtn:$('skelBtn'), skelNote:$('skelNote'), selSeek:$('selSeek'), clipWrap:$('clipWrap'), clipFlagA:$('clipFlagA'), clipFlagB:$('clipFlagB'), clipWarn:$('clipWarn'), selBand:$('selBand'), selTicks:$('selTicks'), selNow:$('selNow'), selTotal:$('selTotal'), stageTime:$('stageTime')
@@ -2290,27 +2285,6 @@ function onClipInput(which){
 }
 el.clipStart.addEventListener('input',()=>onClipInput('start'));
 el.clipEnd.addEventListener('input',()=>onClipInput('end'));
-el.setStartBtn.addEventListener('click',()=>{
-  if(!state.media) return;
-  state.markStart=null; state.clipMsg='';
-  const t0=state.shownT!=null ? state.shownT : state.media.currentTime, e0=state.clip.end;
-  state.clip=normalizeClip(t0, e0, 'start'); if(e0-t0>MAX_CLIP_SEC) state.clipMsg=`${MAX_CLIP_SEC}秒を超えるため、終了を開始から${MAX_CLIP_SEC}秒の位置にしました。`;
-  updateClipUI();
-});
-el.setEndBtn.addEventListener('click',()=>{
-  if(!state.media) return;
-  state.markStart=null; state.clipMsg='';
-  const t1=state.shownT!=null ? state.shownT : state.media.currentTime;
-  if(t1-state.clip.start>MAX_CLIP_SEC) state.clipMsg=`${MAX_CLIP_SEC}秒を超えるため、開始から${MAX_CLIP_SEC}秒の位置までにしました。`;
-  state.clip=normalizeClip(state.clip.start, t1, 'endclamp'); updateClipUI();
-});
-
-$('clipAllBtn').addEventListener('click',()=>{
-  if(!state.media) return;
-  state.markStart=null; state.clipMsg='';
-  state.clip=normalizeClip(0, state.duration, 'start'); if(state.duration>MAX_CLIP_SEC) state.clipMsg=`この動画は${MAX_CLIP_SEC}秒を超えるため、最初から${MAX_CLIP_SEC}秒までにしました。`;
-  updateClipUI();
-});
 
 // ===== 設定の読み取り =====
 const radio = name => document.querySelector(`input[name=${name}]:checked`).value;
@@ -2427,13 +2401,13 @@ function beginBusy(){
   state.diag=null; shootDrawer(false); saveDrawer(false);
   el.errorBox.classList.add('hidden');
   el.analyzeBtn.disabled=true; el.progressBox.classList.remove('hidden');
-  el.clipStart.disabled=el.clipEnd.disabled=true; el.setStartBtn.disabled=el.setEndBtn.disabled=$('clipAllBtn').disabled=true; el.clipWrap.style.pointerEvents='none';
+  el.clipStart.disabled=el.clipEnd.disabled=true; el.clipWrap.style.pointerEvents='none';
   el.cancelBtn.disabled=false; state.phase='analyzing'; state.cancel=false; keepAwake(true);
 }
 function endBusy(){
   keepAwake(false);
   el.progressBox.classList.add('hidden'); el.analyzeBtn.disabled=false;
-  el.clipStart.disabled=el.clipEnd.disabled=false; el.setStartBtn.disabled=el.setEndBtn.disabled=$('clipAllBtn').disabled=false; el.clipWrap.style.pointerEvents='';
+  el.clipStart.disabled=el.clipEnd.disabled=false; el.clipWrap.style.pointerEvents='';
 }
 el.cancelBtn.addEventListener('click',()=>{ state.cancel=true; el.cancelBtn.disabled=true; setProgress(0,'中止しています…'); });
 el.analyzeBtn.addEventListener('click',()=>{
@@ -2910,7 +2884,7 @@ el.reselectBtn.addEventListener('click',()=>{            // 区間や人数を�
   el.stageCard.scrollIntoView({behavior:'smooth', block:'start'});
 });
 function syncSkelBtn(){
-  el.skelBtn.textContent = state.showSkel ? '🦴 スティックピクチャーを隠す' : '🦴 スティックピクチャーを表示する';
+  el.skelBtn.textContent = state.showSkel ? 'スティックピクチャーを隠す' : 'スティックピクチャーを表示する';
   el.skelBtn.setAttribute('aria-pressed', state.showSkel ? 'true' : 'false');
   el.skelNote.textContent = state.showSkel ? '' : '（隠している間も、角度の値・グラフ・軌跡はそのままです。保存する画像にも反映されます）';
 }
@@ -3734,9 +3708,6 @@ function loopSet(which){
   else { nB=t; if(nB-nA<0.1) nA=Math.max(a, nB-0.5); if(nB-nA<0.1) nB=Math.min(b,nA+0.5); }
   state.loopA=nA; state.loopB=nB; loopUI(); state.dirty=true;
 }
-el.loopSetA.addEventListener('click',()=>loopSet('A'));
-el.loopSetB.addEventListener('click',()=>loopSet('B'));
-el.loopAll.addEventListener('click',()=>{ state.loopA=state.loopB=null; loopUI(); });
 // 再生中・コマ送り中に、画面を更新し続ける
 function startLoop(){
   cancelAnimationFrame(state.raf);
@@ -4446,7 +4417,8 @@ function cmpTick(){
 }
 function cmpStart(){ if(!CMP.raf) CMP.raf=requestAnimationFrame(cmpTick); }
 function cmpTimeText(){
-  CMP.timeEl.textContent = cmpBoth() ? `起点からの時間：${cmpFmt(CMP.tau)}（動画A ${(CMP.A.anchor+CMP.tau).toFixed(2)} 秒／動画B ${(CMP.B.anchor+CMP.tau).toFixed(2)} 秒）` : '';
+  const t = cmpBoth() ? `起点からの時間：${cmpFmt(CMP.tau)}（動画A ${(CMP.A.anchor+CMP.tau).toFixed(2)} 秒／動画B ${(CMP.B.anchor+CMP.tau).toFixed(2)} 秒）` : '';
+  if(CMP.timeEl.textContent!==t) CMP.timeEl.textContent=t;
 }
 function cmpSeek(tau, keepPlaying){
   if(!cmpBoth()) return;
