@@ -3,7 +3,14 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#0f766e">
+<meta name="theme-color" content="#05090d">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="動作解析">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
 <title>動作解析ツール（試作）</title>
 <style>
 :root{
@@ -16,10 +23,16 @@ html{-webkit-text-size-adjust:100%}
 body{margin:0;background:var(--bg);color:var(--ink);line-height:1.6;font-size:16px;
   font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Hiragino Kaku Gothic ProN","Noto Sans JP",Meiryo,sans-serif;
   padding-bottom:env(safe-area-inset-bottom)}
-header{background:var(--accent);color:#fff;padding:14px 16px 12px;padding-top:calc(14px + env(safe-area-inset-top))}
-header h1{margin:0;font-size:18px;letter-spacing:.02em}
+header{color:#fff;padding:14px 16px 12px;padding-top:calc(14px + env(safe-area-inset-top));overflow:hidden;border-bottom:1px solid #134e4a;
+  background:
+   url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='420' height='140' viewBox='0 0 420 140' fill='none' stroke='%232dd4bf' stroke-width='1' stroke-opacity='.55'%3E%3Cpolyline points='250,118 290,74 338,92 380,36 420,58'/%3E%3Cpolyline points='290,74 312,30 352,18 380,36'/%3E%3Cpolyline points='338,92 352,130 400,120'/%3E%3Cg fill='%2399f6e4' fill-opacity='.9' stroke='none'%3E%3Ccircle cx='250' cy='118' r='3'/%3E%3Ccircle cx='290' cy='74' r='3.5'/%3E%3Ccircle cx='338' cy='92' r='3'/%3E%3Ccircle cx='380' cy='36' r='3.5'/%3E%3Ccircle cx='312' cy='30' r='2.5'/%3E%3Ccircle cx='352' cy='18' r='2.5'/%3E%3Ccircle cx='352' cy='130' r='2.5'/%3E%3Ccircle cx='400' cy='120' r='2.5'/%3E%3Ccircle cx='420' cy='58' r='2.5'/%3E%3C/g%3E%3C/svg%3E") right top/420px 140px no-repeat,
+   linear-gradient(rgba(45,212,191,.09) 1px,transparent 1px) 0 0/28px 28px,
+   linear-gradient(90deg,rgba(45,212,191,.09) 1px,transparent 1px) 0 0/28px 28px,
+   radial-gradient(120% 160% at 85% 0%,rgba(13,148,136,.40),transparent 60%),
+   linear-gradient(135deg,#05090d 0%,#0b141b 60%,#0a1f22 100%)}
+header h1{margin:0;font-size:18px;letter-spacing:.06em;text-shadow:0 0 14px rgba(45,212,191,.45)}
 header p{margin:2px 0 0;font-size:12.5px;opacity:.92}
-main{max-width:760px;margin:0 auto;padding:12px 12px 40px}
+main{max-width:760px;margin:0 auto;padding:12px 12px 40px 46px}
 .card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:14px;margin:12px 0}
 .card h2{margin:0 0 10px;font-size:16px;display:flex;align-items:center;gap:8px}
 .card h2 .no{display:inline-grid;place-items:center;width:24px;height:24px;border-radius:50%;background:var(--accent);color:#fff;font-size:13px;flex:none}
@@ -27,7 +40,7 @@ main{max-width:760px;margin:0 auto;padding:12px 12px 40px}
 .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
 .field{margin:10px 0}
 .field>.lab{display:block;font-size:13px;color:var(--sub);margin-bottom:4px;font-weight:600}
-.status{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;background:rgba(255,255,255,.18);padding:3px 10px;border-radius:999px;margin-top:8px}
+.status{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;background:rgba(45,212,191,.12);border:1px solid rgba(45,212,191,.35);padding:3px 10px;border-radius:999px;margin-top:8px}
 .status i{width:9px;height:9px;border-radius:50%;background:#fde68a}
 .status.ok i{background:#86efac}.status.err i{background:#fca5a5}
 .btn{appearance:none;border:1px solid var(--line);background:#fff;color:var(--ink);border-radius:12px;padding:10px 16px;font-size:16px;min-height:46px;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;justify-content:center;gap:6px}
@@ -138,14 +151,14 @@ td.sc .badge{margin-left:0;margin-top:2px;font-size:11px;padding:1px 8px}
 @media (min-width:1000px){.modebar{max-width:none;padding:0 20px}}
 .modebar .modebtn{flex:1;min-height:42px}
 .modebar .modebtn.on{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:700}
-#cmpMain{display:block;max-width:980px;margin:0 auto;padding:4px 12px 40px}
+#cmpMain{display:block;max-width:980px;margin:0 auto;padding:4px 12px 40px 46px}
 .cmpslots{display:grid;grid-template-columns:1fr;gap:12px;margin-top:10px}
 .cmpslot{border:1px solid #d9e0ea;border-radius:10px;padding:10px;background:#f8fafc;min-width:0}
 .cmpname{margin-bottom:6px}
 .cmpfile{width:100%;font-size:14px;margin-bottom:6px}
 .cmpvid{background:#000;border-radius:8px;overflow:hidden;min-height:60px}
 .cmpvid video{display:block;width:100%;max-height:300px;background:#000}
-#cmpSelDrawer .cmpvid video{max-height:170px}
+#cmpSelCard .cmpvid video{max-height:170px}
 /* 重ね合わせの画面は、下の調整つまみを動かしている間も見えるよう、画面の上に固定する（スマホでは高さを抑える） */
 .cmpsticky{position:sticky;top:0;z-index:20;background:var(--card);padding:6px 0 2px;margin:0 -2px;border-bottom:1px solid #e5e7eb}
 .cmpstage{position:relative;background:#000;border-radius:10px;overflow:hidden;touch-action:none;cursor:grab;text-align:center}
@@ -153,22 +166,43 @@ td.sc .badge{margin-left:0;margin-top:2px;font-size:11px;padding:1px 8px}
 @media (min-width:700px){ .cmpstage canvas{max-height:50vh} }
 .cmpsave .btn{flex:1 1 0}
 #cmpSaveInfo{font-size:12px;margin-top:3px;line-height:1.35}
-/* 「調整」つまみタブ：右の端に出し、押すと調整パネルが右から開く（動画の下に重ならない位置から） */
+/* 「調整」つまみタブ：左の端に出し、押すと調整パネルが左から開く（動画の下に重ならない位置から） */
 /* 調整パネルを開いている間は、動画の表示を少し小さくして、パネルの項目が全部（スクロールなしで）見えるようにする */
 @media (max-width:699px){ body.cmpopen .cmpstage canvas{max-height:18vh} }
 body.cmpopen #cmpSaveInfo:not(.rec),body.cmpopen #cmpTime{display:none}
-/* 右の端のつまみタブ（「調整」「撮影方法」で同じ大きさ・縦書き）と、そこから開くパネル */
-.sidetab{position:fixed;right:0;top:var(--tabTop,140px);z-index:31;width:40px;min-height:96px;padding:10px 0;display:flex;align-items:center;justify-content:center;border:1px solid var(--accent);border-right:none;border-radius:12px 0 0 12px;background:var(--accent);color:#fff;font-weight:700;font-size:17px;flex-direction:column;line-height:1.18;cursor:pointer;box-shadow:-2px 2px 8px rgba(0,0,0,.2);transition:transform .22s ease}
+/* 左の端のつまみタブ（「調整」「撮影方法」で同じ大きさ・縦書き）と、そこから開くパネル */
+.sidetab{position:fixed;left:0;top:var(--tabTop,140px);z-index:31;width:40px;min-height:96px;padding:10px 0;display:flex;align-items:center;justify-content:center;border:1px solid var(--accent);border-left:none;border-radius:0 12px 12px 0;background:var(--accent);color:#fff;font-weight:700;font-size:17px;flex-direction:column;line-height:1.18;cursor:pointer;box-shadow:2px 2px 8px rgba(0,0,0,.2);transition:transform .22s ease}
 .sidetab span{display:block}
 .sidetab.hidden{display:none}
-.sidedrawer{position:fixed;right:0;top:0;bottom:0;width:min(380px,90vw);z-index:30;background:var(--card);border-left:1px solid #cbd5e1;box-shadow:-4px 0 14px rgba(0,0,0,.18);padding:10px 14px 24px;overflow-y:auto;transform:translateX(105%);transition:transform .22s ease;visibility:hidden}
-.sidedrawer .sdhead{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
-body.shootopen #shootDrawer{transform:none;visibility:visible}
-body.shootopen #shootTab{transform:translateX(calc(-1 * min(380px,90vw)))}
-body.cmpopen #cmpTab, body.cmpopen #cmpSelTab{transform:translateX(calc(-1 * min(340px,86vw)))}
-.neticon{position:absolute;top:calc(10px + env(safe-area-inset-top));right:12px;width:40px;height:40px;border-radius:50%;border:1px solid rgba(255,255,255,.5);background:rgba(255,255,255,.2);color:#fff;font-size:20px;line-height:1;cursor:pointer;padding:0}
+.sidedrawer{position:fixed;left:0;top:0;bottom:0;width:min(380px,90vw);z-index:30;background:var(--card);border-right:1px solid #cbd5e1;box-shadow:4px 0 14px rgba(0,0,0,.18);padding:10px 14px 24px;overflow-y:auto;transform:translateX(-105%);transition:transform .22s ease;visibility:hidden}
+.savesec{padding:10px 0;border-top:1px solid #e5e7eb;margin-top:10px}
 header{position:relative}
 header h1,header p{padding-right:48px}
+.menubtn{position:absolute;top:calc(10px + env(safe-area-inset-top));right:12px;width:40px;height:40px;border-radius:10px;border:1px solid rgba(255,255,255,.5);background:rgba(255,255,255,.2);color:#fff;font-size:22px;line-height:1;cursor:pointer;padding:0}
+.tour{position:fixed;inset:0;z-index:60;display:none}
+.tour.on{display:block}
+.tour .ring{position:fixed;border-radius:14px;box-shadow:0 0 0 9999px rgba(15,23,42,.62),0 0 0 4px #fbbf24 inset;transition:all .45s ease;pointer-events:none}
+.tour .hand{position:fixed;font-size:34px;pointer-events:none;transition:all .45s ease;animation:tourtap 1s ease-in-out infinite;filter:drop-shadow(0 2px 3px rgba(0,0,0,.5))}
+@keyframes tourtap{0%,100%{transform:translate(0,0) scale(1)}50%{transform:translate(-6px,-8px) scale(.9)}}
+.tour .cap{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom));transform:translateX(-50%);width:min(440px,92vw);background:#fff;border-radius:14px;padding:14px 16px;box-shadow:0 6px 24px rgba(0,0,0,.4)}
+.tour .cap b{font-size:16px}
+.tour .cap p{margin:6px 0 10px;font-size:14.5px;line-height:1.6}
+.tour .dots{display:flex;gap:6px;margin-bottom:8px}
+.tour .dots i{width:22px;height:5px;border-radius:3px;background:#cbd5e1}
+.tour .dots i.on{background:var(--accent)}
+.tour .btns{display:flex;gap:8px;justify-content:flex-end}
+.manual{position:fixed;right:0;top:0;bottom:0;width:min(440px,94vw);z-index:40;background:var(--card);border-left:1px solid #cbd5e1;box-shadow:-4px 0 14px rgba(0,0,0,.25);padding:10px 14px 30px;overflow-y:auto;transform:translateX(105%);transition:transform .22s ease;visibility:hidden}
+body.manualopen .manual{transform:none;visibility:visible}
+.manual details{border:1px solid #d9e0ea;border-radius:10px;padding:8px 10px;margin-top:8px;background:#f8fafc}
+.manual summary{font-weight:700;cursor:pointer}
+.manual ul{margin:6px 0 2px;padding-left:20px;font-size:14px;line-height:1.6}
+.manual .term{color:var(--sub);font-size:12.5px}
+.sidedrawer .sdhead{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+body.shootopen #shootDrawer{transform:none;visibility:visible}
+body.shootopen #shootTab, body.saveopen #saveTab{transform:translateX(min(380px,90vw))}
+body.saveopen #saveDrawer{transform:none;visibility:visible}
+body.saveopen #shootTab, body.shootopen #saveTab{visibility:hidden}   /* 片方を開いている間は、もう片方のタブは隠す（重なり防止） */
+body.cmpopen #cmpTab{transform:translateX(min(340px,86vw))}
 /* 区間を決めるバー：開始・終了の丸をドラッグ。バーの空いたところをタップ＝そこを開始に。なぞる＝動画を動かす（オレンジの線が今の位置） */
 .rbar{position:relative;height:46px;margin-top:6px;touch-action:none;cursor:pointer;user-select:none;-webkit-user-select:none}
 .rbar .rtrack{position:absolute;left:14px;right:14px;top:19px;height:8px;background:#e5e7eb;border-radius:4px}
@@ -182,23 +216,22 @@ header h1,header p{padding-right:48px}
 .cmpdrawer .cmpgrid input[type=range]{height:30px}
 .cmpdrawer .trkgrid{margin-top:4px}
 .cmpdrawer .row{gap:6px 10px;margin-top:6px}
-.cmpdrawer{position:fixed;right:0;top:var(--cmpTop,200px);bottom:0;width:min(340px,86vw);z-index:30;background:var(--card);border-left:1px solid #cbd5e1;box-shadow:-4px 0 14px rgba(0,0,0,.18);padding:8px 12px 12px;overflow-y:auto;transform:translateX(105%);transition:transform .22s ease;visibility:hidden}
+.cmpdrawer{position:fixed;left:0;top:var(--cmpTop,200px);bottom:0;width:min(340px,86vw);z-index:30;background:var(--card);border-right:1px solid #cbd5e1;box-shadow:4px 0 14px rgba(0,0,0,.18);padding:8px 12px 12px;overflow-y:auto;transform:translateX(-105%);transition:transform .22s ease;visibility:hidden}
 #cmpSpacer{height:0}
 @media (max-width:999px){ body.cmpopen #cmpSpacer{height:45vh} }   /* スマホ：調整パネルを開いたときだけ、重ねた画面を上に固定できるよう下に余白を足す */
 /* パソコンなど広い画面：重ねた画面を横いっぱいに使う（動画を選ぶ・調整はつまみタブから） */
 @media (min-width:1000px){
-  #cmpMain{max-width:none;margin:0;padding:12px 56px 40px 20px}
+  #cmpMain{max-width:none;margin:0;padding:12px 20px 40px 56px;display:grid;grid-template-columns:400px minmax(0,1fr);column-gap:20px;align-items:start}
   .cmpslots{grid-template-columns:1fr}
   .cmpvid video{max-height:240px}
   .cmpstage canvas{max-height:62vh}
   /* 調整パネルは「撮影方法」と同じ大きさ（画面の高さいっぱい）。開くと、重ねた画面が隠れないよう左へ寄せる */
   .cmpdrawer{top:0;width:min(380px,90vw)}
-  body.cmpopen #cmpTab, body.cmpopen #cmpSelTab{transform:translateX(calc(-1 * min(380px,90vw)))}
-  #cmpSelTab{--tabTop:218px!important}
-  #cmpTab{--tabTop:326px!important}
-  body.cmpopen #cmpMain{padding-right:calc(380px + 20px)}
+  body.cmpopen #cmpTab{transform:translateX(min(380px,90vw))}
+  #cmpTab{--tabTop:218px!important}
+  body.cmpopen #cmpMain{padding-left:calc(380px + 20px)}
 }
-body[data-cmp=adj] #cmpDrawer, body[data-cmp=sel] #cmpSelDrawer{transform:none;visibility:visible}
+body[data-cmp=adj] #cmpDrawer{transform:none;visibility:visible}
 .cmpgrid{display:grid;grid-template-columns:auto 1fr 3.4em;gap:6px 10px;align-items:center}
 .cmpgrid label{font-size:13.5px;color:#334155;white-space:nowrap}
 .cmpgrid output{font-size:13px;color:#334155;text-align:right}
@@ -247,6 +280,12 @@ body[data-cmp=adj] #cmpDrawer, body[data-cmp=sel] #cmpSelDrawer{transform:none;v
 .col-left,.col-right{min-width:0}
 /* 解析後：スマホなど狭い画面でも、元の動画の直下にスティックピクチャーを出して見比べやすくする */
 .col-right{display:flex;flex-direction:column}
+.fcard-fill{}
+@media (min-width:1000px){
+  /* 写真・動画を選ぶ前は、左の枠の高さを、右の表示場所に合わせる */
+  main:has(#stageCard.hidden) .col-left{align-self:stretch;display:flex;flex-direction:column}
+  main:has(#stageCard.hidden) .col-left #fileCard{flex:1 1 auto}
+}
 .phbox{display:flex;align-items:center;justify-content:center;aspect-ratio:16/9;max-height:62vh;width:100%;background:#000;border-radius:14px;color:#8a97a6;font-size:14px;text-align:center;padding:0 16px}
 .col-right:has(#stageCard:not(.hidden)) #placeholderCard{display:none}
 .col-right>#placeholderCard{order:0}
@@ -257,7 +296,7 @@ body[data-cmp=adj] #cmpDrawer, body[data-cmp=sel] #cmpSelDrawer{transform:none;v
 /* パソコンなど広い画面：左＝設定、右＝動画・3D・結果 */
 @media (min-width:1000px){
   header{padding-left:24px;padding-right:24px}
-  main{max-width:none;padding:12px 20px 40px;display:grid;grid-template-columns:400px minmax(0,1fr);column-gap:20px;align-items:start}
+  main{max-width:none;padding:12px 20px 40px 56px;display:grid;grid-template-columns:400px minmax(0,1fr);column-gap:20px;align-items:start}
   .col-left{position:sticky;top:8px;max-height:calc(100vh - 16px);overflow-y:auto;padding-right:2px}
   footer{max-width:none;padding:0 24px 30px}
 }
@@ -279,21 +318,18 @@ footer{max-width:760px;margin:0 auto;padding:0 14px 30px;font-size:12.5px;color:
 <header>
   <h1>動作解析ツール（試作）</h1>
   <p>写真・動画から、関節の角度・部位の動き・歩行のリズムを調べます。データはこの端末の中だけで処理します。</p>
+  <button class="menubtn" id="menuBtn" type="button" aria-label="使い方（マニュアル）" aria-expanded="false">☰</button>
   <div class="status" id="status"><i></i><span id="statusText">解析エンジンを準備中…</span></div>
-  <button class="neticon" id="netIcon" type="button" aria-label="解析データの設定" aria-expanded="false" title="解析データ">⚙</button>
 </header>
 
 <nav class="modebar" id="modeBar" aria-label="モードの切り替え">
-  <button class="btn small modebtn on" id="modeAna" type="button">🏃 動作を解析する</button>
-  <button class="btn small modebtn" id="modeCmp" type="button">🆚 2つの動画を重ねて比べる</button>
+  <button class="btn small modebtn on" id="modeAna" type="button">動作を解析する</button>
+  <button class="btn small modebtn" id="modeCmp" type="button">2つの動画を重ねて比べる</button>
 </nav>
 
 <main id="cmpMain" class="hidden">
-  <button type="button" class="sidetab" id="cmpSelTab" style="--tabTop:calc(var(--cmpTop,200px) + 8px)" aria-expanded="false" aria-controls="cmpSelDrawer"><span>動</span><span>画</span><span>選</span><span>択</span></button>
-  <aside class="cmpdrawer" id="cmpSelDrawer" aria-label="動画を選ぶ">
-    <div class="sdhead"><h2 style="margin:0">動画を2つ選び、起点を決める</h2><button class="btn small" id="cmpSelClose" type="button">閉じる ✕</button></div>
-  
-    <div class="sub">動画Aが土台、動画Bがその上に重なります。最初は、どちらも動画の最初が起点です。「ここから比べたい」場面（例：足が床に着く瞬間、動き出し）で止めて「この場面を起点にする」を押すと、起点を変えられます。</div>
+  <section class="card" id="cmpSelCard">
+    <h2><span class="no">1</span>動画を2つ選び、それぞれ起点の場面を決める</h2>
     <div class="cmpslots">
       <div class="cmpslot" id="cmpSlotA">
         <div class="cmpname"><b>動画A（土台）</b></div>
@@ -320,13 +356,11 @@ footer{max-width:760px;margin:0 auto;padding:0 14px 30px;font-size:12.5px;color:
         <div class="sub" id="cmpInfoB">動画を選んでください。</div>
       </div>
     </div>
-      <div class="sub" style="margin-top:10px">動画はこの端末の中だけで処理され、外には送られません。顔が分かる動画を保存・共有するときは、ご本人の同意と取り扱いにご注意ください。</div>
-  
-  </aside>
+  </section>
 
   <section class="card" id="cmpStageCard">
     <h2><span class="no">2</span>重ねて確認する</h2>
-    <div class="sub" id="cmpGuide">右端の「動画選択」タブから、動画Aと動画Bを選んでください。選ぶと、ここに重ねて表示されます。</div>
+    <div class="sub" id="cmpGuide">上の「1」で動画Aと動画Bを選んでください。選ぶと、ここに重ねて表示されます。</div>
     <div class="cmpsticky">
       <div class="cmpstage" id="cmpStage"><canvas id="cmpCv" width="640" height="360"></canvas></div>
       <div class="sub" id="cmpTime" style="margin-top:4px"></div>
@@ -343,12 +377,12 @@ footer{max-width:760px;margin:0 auto;padding:0 14px 30px;font-size:12.5px;color:
         <button class="btn small primary" id="cmpSaveVid" type="button" disabled>🎬 動画で保存</button>
         <button class="btn small hidden" id="cmpRecCancel" type="button">録画を中止</button>
       </div>
-      <div class="sub" id="cmpSaveInfo">動画の保存は、起点（0秒）から最後までを、実際の再生と同じ時間をかけて録画します。録画中は画面を切り替えないでください。</div>
+      <div class="sub" id="cmpSaveInfo"></div>
     </div>
 
-    <button type="button" class="sidetab hidden" id="cmpTab" style="--tabTop:calc(var(--cmpTop,200px) + 116px)" aria-expanded="false" aria-controls="cmpDrawer"><span>調</span><span>整</span></button>
+    <button type="button" class="sidetab hidden" id="cmpTab" style="--tabTop:calc(var(--cmpTop,200px) + 8px)" aria-expanded="false" aria-controls="cmpDrawer"><span>調</span><span>整</span></button>
     <aside class="cmpdrawer" id="cmpDrawer" aria-label="重ね方の調整">
-      <div class="trkttl"><b>重ね方の調整</b><span class="sub"> 画面の上を指でなぞると動画Bを動かせます</span></div>
+      <div class="trkttl"><b>重ね方の調整</b><span class="sub"> なぞる＝動画Bを移動／2本指＝拡大・縮小</span></div>
       <div class="cmpgrid">
         <label for="cmpOp">動画Bの濃さ</label><input type="range" id="cmpOp" min="0" max="100" step="1" value="50"><output id="cmpOpV">50%</output>
         <label for="cmpSc">動画Bの大きさ</label><input type="range" id="cmpSc" min="30" max="250" step="1" value="100"><output id="cmpScV">100%</output>
@@ -369,15 +403,77 @@ footer{max-width:760px;margin:0 auto;padding:0 14px 30px;font-size:12.5px;color:
   </section>
 </main>
 
+<div class="tour" id="tour" role="dialog" aria-label="使い方のご案内">
+  <div class="ring" id="tourRing"></div><div class="hand" id="tourHand">👆</div>
+  <div class="cap"><div class="dots" id="tourDots"><i></i><i></i><i></i></div><b id="tourTtl"></b><p id="tourTxt"></p>
+    <div class="btns"><button class="btn small" id="tourSkip" type="button">スキップ</button><button class="btn small primary" id="tourNext" type="button">次へ</button></div></div>
+</div>
+<aside class="manual" id="manual" aria-label="使い方マニュアル">
+  <div class="sdhead"><h2 style="margin:0">使い方マニュアル</h2><button class="btn small" id="manualClose" type="button">閉じる ✕</button></div>
+  <div class="sub">知りたい項目をタップすると開きます。 <button class="btn small" id="tourAgain" type="button">▶ 最初のご案内をもう一度見る</button></div>
+  <details open><summary>① 全体の流れ</summary><ul>
+    <li>「動作を解析する」で、写真か動画を選びます。</li>
+    <li>動画は、解析したい区間（最大30秒）を決めて「解析する」を押します。</li>
+    <li>結果（角度・動き・歩行のリズム）を画面で確認し、よければ左端の「保存」タブから保存します。</li>
+    <li>「2つの動画を重ねて比べる」では、別々の動画を重ねて見比べます。</li>
+    <li>動画や写真はこの端末の中だけで処理され、外には送られません。</li></ul></details>
+  <details><summary>② うまく測る撮影のコツ</summary><ul>
+    <li>カメラは動かさず（三脚や壁への固定がおすすめ）、全身が画面に入るようにします。</li>
+    <li>体の線が分かる服装、背景と色が違う服装だと安定します。</li>
+    <li>横から撮ると、膝・股関節などの曲げ伸ばしが見やすくなります。</li>
+    <li>歩行は、歩いている部分が3〜4歩以上入るようにします。映る人は被験者だけにすると取り違えを防げます。</li>
+    <li>左端の「撮影方法」タブで、撮影の向き・測る側・人数・精度を設定します。正面＝被験者がカメラの方を向いている状態、背面＝カメラに背を向けている状態です。左右は被験者から見た左右で表記します（正面では、画面の左側が被験者の「右」）。カメラに近い側を選ぶと安定します。</li></ul></details>
+  <details><summary>③ 解析する区間の決め方</summary><ul>
+    <li>動画の下のバーに「開始」「終了」の丸があります。丸をドラッグして動かします。</li>
+    <li>バーの空いたところをタップすると、そこが開始の位置になります。</li>
+    <li>バーをなぞると動画の表示位置が動きます（区間は変わりません。オレンジの線が今の位置）。</li>
+    <li>細かく合わせるときは「±0.1秒」で動画を動かして、下のボタンで開始・終了にできます。</li>
+    <li>長い動画でも、解析できるのは最大30秒です。</li>
+    <li>解析後も、同じバーで「繰り返し再生する範囲」を決められます。</li></ul></details>
+  <details><summary>④ 複数人が写っているとき・ボールや道具を追うとき</summary><ul>
+    <li>「撮影方法」タブで「複数人」を選ぶと、解析前に対象の人をタップして指定します。</li>
+    <li>ボールや道具は、動画の中で追いたい点をタップします。タップすると次の場面へ自動で進みます。「場面」ボタンで、等間隔の5つの場面に動かせます。1か所でも追えますが、隠れる・ずれるときは場面を増やして指定すると正確です（✓は指定済み）。</li>
+    <li>追跡は、画像の見た目の特徴をたどる方法（テンプレートマッチング）です。背景と似た色だと外れやすいので、目立つものが向いています。</li></ul></details>
+  <details><summary>⑤ 結果の見方</summary><ul>
+    <li>角度：関節の曲がり具合です。＋と−の意味（屈曲・伸展など）は、体の向きの設定で決まります。</li>
+    <li>グラフ：タップすると、その時点の動画に移ります。▼は検出した1歩の位置です。</li>
+    <li>ケーデンス：1分あたりの歩数（歩く速さの目安）です。</li>
+    <li>あくまで目安です。診断や評価の根拠にはせず、経過を見る参考にしてください。</li></ul></details>
+  <details><summary>⑥ 3D表示（スティックピクチャー）</summary><ul>
+    <li>スティックピクチャーは、関節を点と線でつないだ人形のような図です。</li>
+    <li>ドラッグで回転、ボタンで正面・横などに切り替え（向きは被験者から見た方向）、スライダーで拡大・縮小できます。再生・コマ送りに合わせて動きます。</li>
+    <li>青＝左、橙＝右。黄色の矢印は体の前方（推定）です。</li>
+    <li>奥行きは画像から推定しているため、目安として見てください（薄い点線は推定した部位です）。</li></ul></details>
+  <details><summary>⑦ 保存のしかた</summary><ul>
+    <li>左端の「保存」タブ（解析後に出ます）を開き、保存したい項目のボタンを押します。</li>
+    <li>画像：今の画面を保存します。「顔を隠す」を入れると個人情報を守れます。</li>
+    <li>動画：骨格や角度つきの動画を保存します。実際の再生と同じ時間がかかり、録画中は画面を切り替えないでください。</li>
+    <li>スマホでは共有メニューが開きます。「画像を保存」を選ぶと写真アプリに入ります。</li>
+    <li>顔が分かる動画を保存・共有するときは、ご本人の同意と取り扱いにご注意ください。複数人の動画では、対象者以外の顔は隠せません。</li></ul></details>
+  <details><summary>⑧ 2つの動画を重ねて比べる</summary><ul>
+    <li>動画Aが土台、動画Bが上に重なります。それぞれ「この場面を起点にする」で、比べたい瞬間（足が着く瞬間など）をそろえます。</li>
+    <li>左端の「調整」タブ：Bの濃さ・大きさ・位置などを調整します。</li>
+    <li>重ねた画面の上で、1本指でなぞるとBが動き、2本指で広げる／狭めると大きさが変わります（パソコンはホイール）。</li>
+    <li>解析で保存した「背景を黒にした動画」を重ねると、動きだけを比べられます。</li>
+    <li>動画の保存は、起点（0秒）から最後までを、実際の再生と同じ時間をかけて録画します。録画中は画面を切り替えないでください。</li></ul></details>
+  <details><summary>⑨ 解析データとオフライン利用</summary><ul>
+    <li>解析に使うデータ（約30MB）を端末に保存すると、次回から通信なしで使えます。</li>
+    <li>保存済みの場合、画面上部の案内は出ません。取り直し・削除は、画面一番下の「解析データの管理」から行えます。</li>
+    <li>スマホのホーム画面に追加すると、アプリのように開けます。</li></ul></details>
+  <details><summary>⑩ うまくいかないとき</summary><ul>
+    <li>人が検出されない：全体が写っているか、暗すぎないか、人が小さすぎないかを確認します。</li>
+    <li>解析が遅い：「標準（速い）」を選び、区間を短くします。</li>
+    <li>左右・向きが逆：解析後でも設定を変えるだけで直せます。</li></ul></details>
+</aside>
 <main id="anaMain">
 <div class="col-left">
   <!-- ⓪ 通信モード -->
   <section class="card hidden" id="netCard">
-    <h2><span class="no">⚙</span>解析データ</h2>
+    <h2><span class="no">⚙</span>解析用データの準備</h2>
     <div class="sub" id="netDesc"></div>
     <div class="row hidden" id="netAsk" style="margin-top:8px">
-      <button class="btn small primary" id="netGet" type="button">端末に取り込む（約30MB）</button>
-      <button class="btn small" id="netSkip" type="button">今回は取り込まずに使う</button>
+      <button class="btn small primary" id="netGet" type="button">ダウンロードして端末に保存（約30MB）</button>
+      <button class="btn small" id="netSkip" type="button">保存せず、このまま通信して使う（Wi-Fi推奨）</button>
     </div>
     <div id="netProg" class="hidden">
       <div class="progress"><div id="netBar"></div></div>
@@ -391,21 +487,12 @@ footer{max-width:760px;margin:0 auto;padding:0 14px 30px;font-size:12.5px;color:
   </section>
 
   <!-- ① ファイル -->
-  <section class="card">
+  <section class="card" id="fileCard">
     <h2><span class="no">1</span>写真か動画を選ぶ</h2>
+    <div class="sub" style="margin:-2px 0 10px;line-height:1.7">写真（1枚）または動画を選びます。動画は、解析したい区間（最大30秒）をあとから決められます。選んだ写真・動画はこの端末の中だけで処理され、外には送られません。<br>全身が映っていて、カメラが動いていないものが向いています（撮影のコツは右上の「☰」の使い方にあります）。</div>
     <input type="file" id="file" accept="image/*,video/*" class="hidden">
     <label class="btn primary big" for="file">📷 端末から写真・動画を選ぶ</label>
-    <div class="sub" id="fileInfo" style="margin-top:8px">まだ選んでいません</div>
-    <details style="margin-top:8px" id="tipsBox">
-      <summary>うまく測るための撮影のコツ</summary>
-      <ul>
-        <li>カメラは三脚などで<b>固定</b>し、手で動かさない（動かすと軌跡がずれます）</li>
-        <li>歩行は<b>真横</b>から。頭からつま先まで全身を映す</li>
-        <li>映る人は<b>被験者だけ</b>にする（他の人が目立つと取り違えます）</li>
-        <li>体の線が分かる服装で、明るい場所で撮る</li>
-        <li>歩行は、歩いている部分が3〜4歩以上入るようにする</li>
-      </ul>
-    </details>
+    <div class="sub" id="fileInfo" style="margin-top:8px"></div>
   </section>
 
   <!-- ② 設定 -->
@@ -474,7 +561,6 @@ footer{max-width:760px;margin:0 auto;padding:0 14px 30px;font-size:12.5px;color:
       </div>
       <div class="trkstep"><b>① 追う点を指定</b>：動画を止めて、先端（またはボールの中心）を<b>タップするだけ</b>で指定されます。まちがえたら「取り消し」。</div>
       <div class="trkscenes" id="trkScenes" aria-label="場面の移動"></div>
-      <div class="sub" id="trkSceneNote">上の「場面」ボタンで、等間隔の5つの場面に動かせます。1か所でも追えますが、ボールが隠れる・ずれるときは、場面を増やして指定すると正確になります（✓は指定済み）。</div>
       <div class="trkstep"><b>② 追跡する</b></div>
       <div class="trkbtns">
         <button class="btn small primary" id="trkRun" type="button">追跡する</button>
@@ -521,7 +607,6 @@ footer{max-width:760px;margin:0 auto;padding:0 14px 30px;font-size:12.5px;color:
           <button class="btn small" type="button" data-nudge="1">＋1秒</button>
         </span>
       </div>
-      <div class="sub" style="margin-top:4px"><b>区間の決め方</b>：バーの上の<b>「始」「終」の丸</b>を左右にドラッグして、解析する区間（最大30秒）を決めます。バーの空いたところを<b>タップすると、そこが開始</b>になります。バーの上を<b>なぞると、動画が動きます</b>（オレンジの線が今の位置）。細かく合わせるときは、「±0.1秒」で動画を動かして、下のボタンで開始・終了にできます。</div>
       <div class="timeinfo" style="margin-top:6px"><span>開始 <b id="clipStartLabel">0.0秒</b>　／　終了 <b id="clipEndLabel">0.0秒</b></span></div>
       <div class="hidden"><input type="range" id="clipStart" min="0" max="1" step="0.1" value="0"><input type="range" id="clipEnd" min="0" max="1" step="0.1" value="1"></div>
       <div class="note warn hidden" id="clipWarn" style="margin-top:6px"></div>
@@ -565,7 +650,6 @@ footer{max-width:760px;margin:0 auto;padding:0 14px 30px;font-size:12.5px;color:
 
     <div class="graphwrap hidden" id="graphWrap">
       <canvas id="graph"></canvas>
-      <div class="sub">グラフをタップすると、その時点の画面に移動します。▼は検出した1歩の位置です。</div>
       <div class="sub" id="signNote" style="margin-top:2px"></div>
     </div>
 
@@ -597,32 +681,12 @@ footer{max-width:760px;margin:0 auto;padding:0 14px 30px;font-size:12.5px;color:
     </div>
     <div class="note warn hidden" id="qualityNote"></div>
 
-    <div style="margin-top:14px">
-      <div class="lab sub" style="font-weight:700;margin-bottom:4px">画像として保存</div>
-      <label class="check"><input type="checkbox" id="optMask" checked>顔を隠して保存する（個人情報の保護）</label>
-      <label class="check" id="optGraphRow"><input type="checkbox" id="optGraph" checked>角度のグラフも一緒に保存する</label>
-      <button class="btn primary big" id="saveBtn" type="button" style="margin-top:6px">💾 今の画面を画像で保存</button>
-      <div class="sub" style="margin-top:4px">スマホでは共有メニューが開きます。「画像を保存」を選ぶと写真アプリに入ります。</div>
-      <div id="recBox" class="hidden" style="margin-top:14px;padding-top:10px;border-top:1px solid #e5e7eb">
-        <div class="lab sub" style="font-weight:700;margin-bottom:4px">動画として保存</div>
-        <div class="trkgrid" style="margin-bottom:6px">
-          <label for="recRange">保存する範囲</label>
-          <select id="recRange"><option value="loop" selected>繰り返し再生の範囲</option><option value="all">解析した区間ぜんぶ</option></select>
-        </div>
-        <label class="check"><input type="checkbox" id="recWith3d" checked>3Dのスティックピクチャーも横に並べる</label>
-        <label class="check"><input type="checkbox" id="recBlack">背景を黒にして、スティックピクチャーだけを保存する（動画を重ねて比べるとき向け）</label>
-        <button class="btn primary big" id="recBtn" type="button" style="margin-top:6px">🎬 スティックピクチャー付きの動画を保存</button>
-        <button class="btn big hidden" id="recCancel" type="button" style="margin-top:6px">録画を中止</button>
-        <div class="sub" id="recInfo" style="margin-top:4px">画面の動画・骨格・角度・軌跡（物・ボールの軌跡も）を、そのまま動画にします。実際の再生と同じ時間（等速）がかかります。録画中は、この画面を閉じたり別のアプリに切り替えたりしないでください。顔を隠す設定は、上の「顔を隠して保存する」に従います。</div>
-      </div>
-    </div>
+    <div class="note" style="margin-top:14px;margin-bottom:0">💾 画像・動画で保存したいときは、画面の左端にある<b>「保存」タブ</b>を開いてください。</div>
   </section>
   <!-- ⑤ 3D -->
   <section class="card hidden" id="view3dCard">
     <h2><span class="no">5</span>3Dで見る（スティックピクチャー）</h2>
     <canvas id="cv3d" aria-label="3次元のスティックピクチャー。ドラッグで回転できます"></canvas>
-    <div class="sub" style="margin-top:6px">ドラッグで回転します。再生・コマ送りに合わせて動きます。向きのボタンは、被験者から見た方向です。</div>
-    <div class="sub" style="margin-top:2px">青＝左、橙＝右。黄色の矢印は体の前方（推定）。薄い点線は、画像に写っておらず推定した部位です。</div>
     <div class="row" style="margin-top:8px">
       <button class="btn small" type="button" data-v3="three">斜め前から</button>
       <button class="btn small" type="button" data-v3="front">正面から</button>
@@ -641,7 +705,6 @@ footer{max-width:760px;margin:0 auto;padding:0 14px 30px;font-size:12.5px;color:
     <details style="margin-top:6px"><summary>うまく表示されないとき</summary>
       <label class="check"><input type="checkbox" id="v3Flip">奥行きの向きを反転する（左右が逆に見えるとき）</label>
     </details>
-    <button class="btn primary big" id="v3Save" type="button" style="margin-top:10px">💾 この3D表示を画像で保存</button>
   </section>
 
   <!-- 注意書き（3D表示について） -->
@@ -650,6 +713,35 @@ footer{max-width:760px;margin:0 auto;padding:0 14px 30px;font-size:12.5px;color:
     <div class="note warn" id="v3Note" style="margin:0"></div>
   </section>
 </div><!-- /col-right -->
+  <button type="button" class="sidetab hidden" id="saveTab" style="--tabTop:326px" aria-expanded="false" aria-controls="saveDrawer"><span>保</span><span>存</span></button>
+  <aside class="sidedrawer" id="saveDrawer" aria-label="結果の保存">
+    <div class="sdhead"><h2 style="margin:0">結果を保存する</h2><button class="btn small" id="saveClose" type="button">閉じる ✕</button></div>
+    <div class="savesec">
+      <div class="lab sub" style="font-weight:700;margin-bottom:4px">① 今の画面を画像で保存</div>
+      <label class="check"><input type="checkbox" id="optMask" checked>顔を隠して保存する（個人情報の保護）</label>
+      <label class="check" id="optGraphRow"><input type="checkbox" id="optGraph" checked>角度のグラフも一緒に保存する</label>
+      <button class="btn primary big" id="saveBtn" type="button" style="margin-top:6px">💾 今の画面を画像で保存</button>
+    </div>
+    <div class="savesec">
+      <div id="recBox" class="hidden">
+        <div class="lab sub" style="font-weight:700;margin-bottom:4px">② 動画として保存</div>
+        <div class="trkgrid" style="margin-bottom:6px">
+          <label for="recRange">保存する範囲</label>
+          <select id="recRange"><option value="loop" selected>繰り返し再生の範囲</option><option value="all">解析した区間ぜんぶ</option></select>
+        </div>
+        <label class="check"><input type="checkbox" id="recWith3d" checked>3Dのスティックピクチャーも横に並べる</label>
+        <label class="check"><input type="checkbox" id="recBlack">背景を黒にして、スティックピクチャーだけを保存する（動画を重ねて比べるとき向け）</label>
+        <button class="btn primary big" id="recBtn" type="button" style="margin-top:6px">🎬 スティックピクチャー付きの動画を保存</button>
+        <button class="btn big hidden" id="recCancel" type="button" style="margin-top:6px">録画を中止</button>
+        <div class="sub" id="recInfo" style="margin-top:4px"></div>
+      </div>
+
+    </div>
+    <div class="savesec" id="saveV3Row">
+      <div class="lab sub" style="font-weight:700;margin-bottom:4px">③ 3D表示を画像で保存</div>
+    <button class="btn primary big" id="v3Save" type="button" style="margin-top:2px">💾 この3D表示を画像で保存</button>
+    </div>
+  </aside>
   <button type="button" class="sidetab" id="shootTab" style="--tabTop:218px" aria-expanded="false" aria-controls="shootDrawer"><span>撮</span><span>影</span><span>方</span><span>法</span></button>
   <aside class="sidedrawer" id="shootDrawer" aria-label="撮影方法の設定">
     <div class="sdhead"><h2 style="margin:0">撮影方法</h2><button class="btn small" id="shootClose" type="button">閉じる ✕</button></div>
@@ -661,7 +753,6 @@ footer{max-width:760px;margin:0 auto;padding:0 14px 30px;font-size:12.5px;color:
         <label><input type="radio" name="view" value="back"><span>背面から</span></label>
       </div>
     </div>
-    <div class="sub" id="viewNote" style="margin:-4px 0 10px">正面＝被験者がカメラの方を向いている状態、背面＝カメラに背を向けている状態。左右は、被験者から見た左右で表記します（正面では、画面の左側にある部位が被験者の「右」）。</div>
     <div class="field" id="sideField">
       <span class="lab">測る側（被験者から見て左右）</span>
       <div class="seg">
@@ -669,7 +760,6 @@ footer{max-width:760px;margin:0 auto;padding:0 14px 30px;font-size:12.5px;color:
         <label><input type="radio" name="side" value="R"><span>右側</span></label>
         <label><input type="radio" name="side" value="B"><span>両側</span></label>
       </div>
-      <div class="sub" style="margin-top:4px">カメラに近い側を選ぶと安定します。</div>
     </div>
     <div class="field" id="dirField">
       <span class="lab">体の向き（顔・つま先が向いている側。屈曲・伸展などの＋−の判定に使います）</span>
@@ -699,7 +789,8 @@ footer{max-width:760px;margin:0 auto;padding:0 14px 30px;font-size:12.5px;color:
 </main>
 <footer>
   姿勢推定（画像から関節の位置を見つける技術）による<b>目安の値</b>です。診断や評価の根拠にはせず、経過を見る参考として使ってください。<br>
-  試作版 v0.24.2
+  <a href="#" id="netManage" style="color:var(--accent)">解析データの管理</a>（保存状況の確認・取り直し・削除）<br>
+  試作版 v0.29.0
 </footer>
 
 <!-- ============================================================
@@ -1544,7 +1635,7 @@ const engine = {lm:null, key:null, delegate:null, mode:'VIDEO', tsBase:1000, mp:
 const NET = {
   mode:'wait', busy:false, shellOk:false,
   CACHE:`motion-offline-v${MP_VER}`,   // 解析に使うデータの保存先（ブラウザのキャッシュ領域）
-  SHELL:'motion-shell-v1',             // ツール本体（この画面）の保存先
+  SHELL:'motion-shell-v2',             // ツール本体（この画面）の保存先
   LOCAL:'./lib/',                      // 同じ場所に置いたコピー（なくてもよい。なければ公開元から取得）
   urls:{}                              // 読み込み用の一時アドレス
 };
@@ -1625,12 +1716,14 @@ async function fetchFile(f, onBytes){
   throw lastErr || new Error('取得できません');
 }
 // ツール本体（この画面）を端末に保存して、電波がなくても開けるようにする
+const SHELL_ASSETS=['manifest.webmanifest','icon-192.png','icon-512.png','icon-maskable-512.png','apple-touch-icon.png','favicon-32.png'];
 async function cacheShell(){
   if(!('serviceWorker' in navigator)) throw new Error('この開き方では、ツール本体の保存ができません');
   await navigator.serviceWorker.register('./sw.js');
   await navigator.serviceWorker.ready;
   const c = await caches.open(NET.SHELL);
   await c.add(new Request(location.href.split('#')[0], {cache:'reload'}));
+  for(const f of SHELL_ASSETS){ try{ await c.add(new Request(new URL(f, location.href).href, {cache:'reload'})); }catch(e){ console.warn('asset cache failed', f, e); } }   // アイコン等（なくても動く）
 }
 async function dropShell(){
   try{ if('serviceWorker' in navigator){ for(const r of await navigator.serviceWorker.getRegistrations()) await r.unregister(); } }catch(e){}
@@ -1658,8 +1751,8 @@ async function prepareOffline(force){
   setTimeout(()=>el.netProg.classList.add('hidden'), 600);
   return shellErr;
 }
-function netPanel(open){ $('netCard').classList.toggle('hidden', !open); $('netIcon').setAttribute('aria-expanded', open?'true':'false'); }
-$('netIcon').addEventListener('click',()=>{ if(CMP.show) setMode('ana'); netPanel($('netCard').classList.contains('hidden')); });
+function netPanel(open){ $('netCard').classList.toggle('hidden', !open); }
+$('netManage').addEventListener('click',(e)=>{ e.preventDefault(); if(CMP.show) setMode('ana'); const open=$('netCard').classList.contains('hidden'); netPanel(open); if(open) $('netCard').scrollIntoView({block:'start',behavior:'smooth'}); });
 function netShowErr(msg){ el.netErr.textContent = msg || ''; el.netErr.classList.toggle('hidden', !msg); if(msg) netPanel(true); }
 async function netRender(){
   const present = await offPresent();
@@ -1698,7 +1791,7 @@ async function fetchAndUse(){
     await resetEngine();
     NET.busy = false;
     await netRender();
-    if(!shellErr) setTimeout(()=>netPanel(false), 1500);              // 取り込めたら、案内は自動で閉じる（アイコンでいつでも開ける）
+    if(!shellErr) setTimeout(()=>netPanel(false), 1500);              // 取り込めたら、案内は自動で閉じる（画面下の「解析データの管理」でいつでも開ける）
     ensureEngine(el.model.value).catch(()=>{});
   }catch(e){
     console.warn('offline prepare failed', e);
@@ -1888,7 +1981,7 @@ function resetAll(){
   if(state.media){ state.media.remove(); state.media=null; }
   Object.assign(state,{phase:'idle', frames:null, smoothed:null, times:null, cadence:null, defs:[], series:{}, cancel:false, cands:null, track:null, pick:null, root3:null, anchors:null, anchorKey:'', markStart:null, clipMsg:''});
   trkReset(false); el.recBox.classList.add('hidden'); anchorTok++; thumbV=null; el.anchorGrid.textContent=''; el.anchorBox.classList.add('hidden');
-  el.resultCard.classList.add('hidden'); el.stageCard.classList.add('hidden'); el.view3dCard.classList.add('hidden'); V3.ok=false;
+  el.resultCard.classList.add('hidden'); $('saveTab').classList.add('hidden'); saveDrawer(false); el.stageCard.classList.add('hidden'); el.view3dCard.classList.add('hidden'); V3.ok=false;
   el.clipBox.classList.add('hidden'); el.progressBox.classList.add('hidden'); el.errorBox.classList.add('hidden');
   el.analyzeBtn.disabled=true;
   octx().clearRect(0,0,el.overlay.width,el.overlay.height);
@@ -2276,21 +2369,62 @@ async function keepAwake(on){
 }
 document.addEventListener('visibilitychange',()=>{ if(!document.hidden && state.phase==='analyzing') keepAwake(true); });
 // 「撮影方法」のつまみタブ：パネルは最初は閉じている。設定の要約を「解析する」の上に出す
-if(window.matchMedia && matchMedia('(min-width:1000px)').matches) $('tipsBox').open=true;   // パソコンでは、撮影のコツを広げた状態にする（スマホは畳んだまま）
+const manualToggle=o=>{ document.body.classList.toggle('manualopen',o); $('menuBtn').setAttribute('aria-expanded',o?'true':'false'); };
+$('menuBtn').addEventListener('click',()=>manualToggle(!document.body.classList.contains('manualopen')));
+$('manualClose').addEventListener('click',()=>manualToggle(false));
+document.addEventListener('keydown',e=>{ if(e.key==='Escape') manualToggle(false); });
+
+// 初めて開いたときだけ出る、使い方のご案内（デモ風）
+const TOUR={i:0,timer:null,
+  steps:[
+    {sel:'#menuBtn',tap:true,ttl:'使い方は、ここにまとめました',txt:'右上の「☰」を押すと、使い方マニュアルが開きます。画面の中の説明は少なくしてあるので、迷ったらここを見てください。'},
+    {sel:'#manual',open:true,ttl:'知りたい項目をタップ',txt:'撮影のコツ・区間の決め方・保存のしかた・重ねて比べる方法などが、項目ごとにまとまっています。タップで開閉できます。'},
+    {sel:'#shootTab',ttl:'左端のタブも使います',txt:'「撮影方法」（解析のあとは「保存」、重ねて比べるときは「調整」）は、左端のタブから開きます。親指で押しやすい位置です。'}],
+  show(i){
+    const T=TOUR, st=T.steps[i]; T.i=i; clearTimeout(T.timer);
+    manualToggle(!!st.open);
+    $('tourTtl').textContent=st.ttl; $('tourTxt').textContent=st.txt;
+    $('tourNext').textContent = i===T.steps.length-1 ? 'わかった' : '次へ';
+    [...$('tourDots').children].forEach((d,k)=>d.classList.toggle('on',k===i));
+    setTimeout(()=>{
+      const el_=document.querySelector(st.sel); if(!el_) return;
+      const r=el_.getBoundingClientRect(), pad=6;
+      const rg=$('tourRing').style; rg.left=(r.left-pad)+'px'; rg.top=(r.top-pad)+'px'; rg.width=(r.width+pad*2)+'px'; rg.height=(Math.min(r.height,innerHeight*0.5)+pad*2)+'px';
+      const h=$('tourHand').style; h.display=st.open?'none':'block'; h.left=(r.left+r.width/2-8)+'px'; h.top=(r.top+r.height/2+4)+'px';
+    }, st.open?300:30);
+    T.timer=setTimeout(()=>{ if(T.i===i && i<T.steps.length-1) T.show(i+1); }, 6000);
+  },
+  start(){ $('tour').classList.add('on'); shootDrawer(false); saveDrawer(false); this.show(0); },
+  end(){ clearTimeout(this.timer); $('tour').classList.remove('on'); manualToggle(false); try{ localStorage.setItem('motion.tour','1'); }catch(e){} }
+};
+$('tourNext').addEventListener('click',()=>{ if(TOUR.i>=TOUR.steps.length-1) TOUR.end(); else TOUR.show(TOUR.i+1); });
+$('tourSkip').addEventListener('click',()=>TOUR.end());
+$('tourAgain').addEventListener('click',()=>{ manualToggle(false); setTimeout(()=>TOUR.start(),300); });
+window.addEventListener('resize',()=>{ if($('tour').classList.contains('on')) TOUR.show(TOUR.i); });
+{ let seen=false; try{ seen=localStorage.getItem('motion.tour')==='1'; }catch(e){}
+  if(!seen) setTimeout(()=>{ if(!CMP.show) TOUR.start(); }, 1500); }
 function shootDrawer(open){
+  if(open) saveDrawer(false);
   document.body.classList.toggle('shootopen', !!open); $('shootTab').setAttribute('aria-expanded', open?'true':'false');
 }
+// 「保存」のつまみタブ：結果が出たあとだけ表示。画像・動画・3Dの保存をここにまとめる
+function saveDrawer(open){
+  if(open){ shootDrawer(false); $('saveV3Row').classList.toggle('hidden', el.view3dCard.classList.contains('hidden')); }
+  document.body.classList.toggle('saveopen', !!open); $('saveTab').setAttribute('aria-expanded', open?'true':'false');
+}
+$('saveTab').addEventListener('click',()=>saveDrawer(!document.body.classList.contains('saveopen')));
+$('saveClose').addEventListener('click',()=>saveDrawer(false));
 $('shootTab').addEventListener('click',()=>shootDrawer(!document.body.classList.contains('shootopen')));
 $('shootClose').addEventListener('click',()=>shootDrawer(false));
 function shootSummary(){
   const val=n=>{ const r=document.querySelector(`input[name="${n}"]:checked`); return r ? r.parentElement.textContent.trim() : ''; };
   const view=val('view'), side=$('sideField').classList.contains('hidden') ? '' : '・'+val('side'), dir=$('dirField').classList.contains('hidden') ? '' : '・体の向き'+val('dir');
-  $('shootSummary').textContent=`撮影方法：${view}${side}${dir}・${val('who')}・${el.model.selectedOptions[0].textContent}　（右端の「撮影方法」タブで変更できます）`;
+  $('shootSummary').textContent=`撮影方法：${view}${side}${dir}・${val('who')}・${el.model.selectedOptions[0].textContent}　（左端の「撮影方法」タブで変更できます）`;
 }
 document.querySelectorAll('#shootDrawer input, #shootDrawer select').forEach(x=>x.addEventListener('change',()=>setTimeout(shootSummary,0)));
 shootSummary();
 function beginBusy(){
-  state.diag=null; shootDrawer(false);
+  state.diag=null; shootDrawer(false); saveDrawer(false);
   el.errorBox.classList.add('hidden');
   el.analyzeBtn.disabled=true; el.progressBox.classList.remove('hidden');
   el.clipStart.disabled=el.clipEnd.disabled=true; el.setStartBtn.disabled=el.setEndBtn.disabled=$('clipAllBtn').disabled=true; el.clipWrap.style.pointerEvents='none';
@@ -2801,7 +2935,7 @@ function finishAnalysis(){
   state.visible=new Set(); state.trailParts=new Set(state.isVideo ? ['ankle'] : []);
   state.defaultsApplied=false;
   recompute(false);
-  el.resultCard.classList.remove('hidden');
+  el.resultCard.classList.remove('hidden'); $('saveTab').classList.remove('hidden');
   state.selTitle=el.stageTitle.textContent;
   el.clipBox.classList.add('hidden'); el.analyzeBtn.classList.add('hidden'); el.reselectBtn.classList.remove('hidden');
   el.stageTitle.textContent = state.isVideo ? '動画の確認（解析結果つき）' : '写真の確認（解析結果つき）';
@@ -4334,9 +4468,9 @@ function cmpEnable(){
   const both=cmpBoth();
   for(const x of [CMP.scrub, CMP.prev, CMP.next, CMP.play, CMP.saveImg, CMP.saveVid]) x.disabled=!both || CMP.rec;
   $('cmpTab').classList.toggle('hidden', !both); if(!both && document.body.dataset.cmp==='adj') cmpPanel(null);
-  if(both){ const first=!CMP.bothSeen; CMP.bothSeen=true; cmpRange(); CMP.scrub.min=CMP.tmin; CMP.scrub.max=CMP.tmax; if(first){ if(document.body.dataset.cmp==='sel') cmpPanel(null); setTimeout(cmpToStage,50); } }
-  CMP.guide.textContent = both ? '起点が0秒です。最初は、どちらも動画の最初が起点です（「動画選択」タブで変えられます）。下の再生バーで起点の前後を行き来し、「調整」タブで動画Bの濃さ・大きさ・位置を調整して、動きを見比べてください。'
-    : '右端の「動画選択」タブから、動画Aと動画Bを選んでください。選ぶと、ここに重ねて表示されます。';
+  if(both){ const first=!CMP.bothSeen; CMP.bothSeen=true; cmpRange(); CMP.scrub.min=CMP.tmin; CMP.scrub.max=CMP.tmax; if(first){ setTimeout(cmpToStage,50); } }
+  CMP.guide.textContent = both ? '起点が0秒です。最初は、どちらも動画の最初が起点です（上の「1」で変えられます）。下の再生バーで起点の前後を行き来し、「調整」タブで動画Bの濃さ・大きさ・位置を調整して、動きを見比べてください。'
+    : '上の「1」で動画Aと動画Bを選んでください。選ぶと、ここに重ねて表示されます。';
 }
 function cmpSlotInfo(S, name){
   const v=S.v;
@@ -4392,21 +4526,41 @@ CMP.swap.addEventListener('click',()=>{
   a.v.load(); b.v.load();
   for(const S of [a,b]){ S.sc.disabled=!S.ready; S.prev.disabled=!S.ready; S.next.disabled=!S.ready; S.set.disabled=!S.ready; cmpSlotInfo(S); }
 });
-// 画面の上をなぞって、動画Bを動かす
+// 画面の上をなぞって動画Bを動かす／2本指でつまんで拡大・縮小（パソコンはマウスのホイール）
+CMP.ptrs=new Map();
+function cmpGestureStart(){
+  const P=[...CMP.ptrs.values()];
+  if(P.length>=2){ CMP.drag=null; CMP.pinch={d:Math.hypot(P[0].x-P[1].x,P[0].y-P[1].y)||1, sc:+CMP.sc.value, mx:(P[0].x+P[1].x)/2, my:(P[0].y+P[1].y)/2, dx:+CMP.dx.value, dy:+CMP.dy.value}; }
+  else if(P.length===1){ CMP.pinch=null; CMP.drag={x:P[0].x, y:P[0].y, dx:+CMP.dx.value, dy:+CMP.dy.value}; }
+  else { CMP.drag=null; CMP.pinch=null; }
+}
 CMP.stage.addEventListener('pointerdown',e=>{
   if(!cmpBoth()) return;
-  CMP.drag={x:e.clientX, y:e.clientY, dx:+CMP.dx.value, dy:+CMP.dy.value};
+  CMP.ptrs.set(e.pointerId,{x:e.clientX,y:e.clientY}); cmpGestureStart();
   try{ CMP.stage.setPointerCapture(e.pointerId); }catch(_){}
   CMP.stage.style.cursor='grabbing'; e.preventDefault();
 });
 CMP.stage.addEventListener('pointermove',e=>{
-  if(!CMP.drag) return;
+  if(!CMP.ptrs.has(e.pointerId)) return;
+  CMP.ptrs.set(e.pointerId,{x:e.clientX,y:e.clientY});
   const r=CMP.cv.getBoundingClientRect(); if(!r.width||!r.height) return;
-  const nx=CMP.drag.dx+(e.clientX-CMP.drag.x)/r.width*200, ny=CMP.drag.dy+(e.clientY-CMP.drag.y)/r.height*200;
-  CMP.dx.value=Math.max(-100,Math.min(100,Math.round(nx))); CMP.dy.value=Math.max(-100,Math.min(100,Math.round(ny))); cmpOut();
+  const clamp=(v,lo,hi)=>Math.max(lo,Math.min(hi,v));
+  if(CMP.pinch){
+    const P=[...CMP.ptrs.values()]; if(P.length<2) return;
+    const d=Math.hypot(P[0].x-P[1].x,P[0].y-P[1].y)||1, mx=(P[0].x+P[1].x)/2, my=(P[0].y+P[1].y)/2;
+    CMP.sc.value=clamp(Math.round(CMP.pinch.sc*d/CMP.pinch.d),+CMP.sc.min,+CMP.sc.max);
+    CMP.dx.value=clamp(Math.round(CMP.pinch.dx+(mx-CMP.pinch.mx)/r.width*200),-100,100);
+    CMP.dy.value=clamp(Math.round(CMP.pinch.dy+(my-CMP.pinch.my)/r.height*200),-100,100); cmpOut(); return;
+  }
+  if(!CMP.drag) return;
+  CMP.dx.value=clamp(Math.round(CMP.drag.dx+(e.clientX-CMP.drag.x)/r.width*200),-100,100); CMP.dy.value=clamp(Math.round(CMP.drag.dy+(e.clientY-CMP.drag.y)/r.height*200),-100,100); cmpOut();
 });
-const cmpDragEnd=()=>{ CMP.drag=null; CMP.stage.style.cursor='grab'; };
+const cmpDragEnd=e=>{ CMP.ptrs.delete(e.pointerId); cmpGestureStart(); if(!CMP.ptrs.size) CMP.stage.style.cursor='grab'; };
 CMP.stage.addEventListener('pointerup',cmpDragEnd); CMP.stage.addEventListener('pointercancel',cmpDragEnd);
+CMP.stage.addEventListener('wheel',e=>{
+  if(!cmpBoth()) return; e.preventDefault();
+  CMP.sc.value=Math.max(+CMP.sc.min,Math.min(+CMP.sc.max,Math.round(+CMP.sc.value*Math.exp(-e.deltaY*0.002)))); cmpOut();
+},{passive:false});
 // 保存
 CMP.saveImg.addEventListener('click',async()=>{
   try{
@@ -4465,25 +4619,23 @@ function cmpDrawerPos(){
   const top=Math.max(0, Math.round(st.getBoundingClientRect().bottom));
   document.documentElement.style.setProperty('--cmpTop', Math.min(top, Math.round(innerHeight*0.7))+'px');
 }
-function cmpPanel(which){                                   // 'adj'＝調整、'sel'＝動画を選ぶ、null＝閉じる
+function cmpPanel(which){                                   // 'adj'＝調整、null＝閉じる
   const b=document.body; if(which) b.dataset.cmp=which; else delete b.dataset.cmp;
   b.classList.toggle('cmpopen', !!which);
-  $('cmpTab').setAttribute('aria-expanded', which==='adj'?'true':'false'); $('cmpSelTab').setAttribute('aria-expanded', which==='sel'?'true':'false');
+  $('cmpTab').setAttribute('aria-expanded', which==='adj'?'true':'false');
   if(which) cmpToStage();
   cmpDrawerPos();
 }
 function cmpDrawer(open){ cmpPanel(open?'adj':null); }
 $('cmpTab').addEventListener('click',()=>cmpPanel(document.body.dataset.cmp==='adj' ? null : 'adj'));
-$('cmpSelTab').addEventListener('click',()=>cmpPanel(document.body.dataset.cmp==='sel' ? null : 'sel'));
-$('cmpSelClose').addEventListener('click',()=>cmpPanel(null));
 for(const ev of ['scroll','resize']) window.addEventListener(ev, ()=>{ if(CMP.show) cmpDrawerPos(); }, {passive:true});
 new ResizeObserver(()=>cmpDrawerPos()).observe(document.querySelector('.cmpsticky'));
 function setMode(m){
   const cmp=m==='cmp';
   $('anaMain').classList.toggle('hidden', cmp); $('cmpMain').classList.toggle('hidden', !cmp);
   $('modeAna').classList.toggle('on', !cmp); $('modeCmp').classList.toggle('on', cmp);
-  CMP.show=cmp; cmpPanel(null);
-  if(cmp){ if(state.media && state.isVideo) state.media.pause(); cmpEnable(); cmpStart(); if(!cmpBoth()) cmpPanel('sel'); }   // 動画がそろっていないときは、動画を選ぶパネルを開いておく
+  CMP.show=cmp; cmpPanel(null); if(cmp){ shootDrawer(false); saveDrawer(false); }
+  if(cmp){ if(state.media && state.isVideo) state.media.pause(); cmpEnable(); cmpStart(); }
   else{ cmpPause(); }
   window.scrollTo({top:0});
 }
