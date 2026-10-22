@@ -448,7 +448,7 @@ footer{max-width:760px;margin:0 auto;padding:0 14px 30px;font-size:12.5px;color:
     <li>あくまで目安です。診断や評価の根拠にはせず、経過を見る参考にしてください。</li></ul></details>
   <details><summary>⑥ 3D表示（スティックピクチャー）</summary><ul>
     <li>スティックピクチャーは、関節を点と線でつないだ人形のような図です。</li>
-    <li>ドラッグで回転、ボタンで正面・横などに切り替え（向きは被験者から見た方向）、スライダーで拡大・縮小できます。再生・コマ送りに合わせて動きます。</li>
+    <li>1本指のドラッグで回転、2本指で広げる／狭めると拡大・縮小（パソコンはホイール、またはスライダー）。ボタンで正面・横などに切り替えられます（向きは被験者から見た方向）。再生・コマ送りに合わせて動きます。</li>
     <li>青＝左、橙＝右。黄色の矢印は体の前方（推定）です。</li>
     <li>奥行きは画像から推定しているため、目安として見てください（薄い点線は推定した部位です）。</li></ul></details>
   <details><summary>⑦ 保存のしかた</summary><ul>
@@ -787,7 +787,7 @@ footer{max-width:760px;margin:0 auto;padding:0 14px 30px;font-size:12.5px;color:
 <footer>
   姿勢推定（画像から関節の位置を見つける技術）による<b>目安の値</b>です。診断や評価の根拠にはせず、経過を見る参考として使ってください。<br>
   <a href="#" id="netManage" style="color:var(--accent)">解析データの管理</a>（保存状況の確認・取り直し・削除）<br>
-  試作版 v0.30.2
+  試作版 v0.30.3
 </footer>
 
 <!-- ============================================================
@@ -4310,13 +4310,22 @@ function draw3DOnScreen(idx){
   const ctx=cv.getContext('2d'); ctx.setTransform(dpr,0,0,dpr,0,0);
   draw3D(ctx, cw, ch, Math.max(0,idx), {label:label3(idx)});
 }
-let drag3=null;
-el.cv3d.addEventListener('pointerdown',e=>{ el.cv3d.setPointerCapture(e.pointerId); drag3={x:e.clientX,y:e.clientY,yaw:V3.yaw,pitch:V3.pitch}; });
+let drag3=null; const ptr3=new Map(); let pinch3=null;
+function g3start(){
+  const P=[...ptr3.values()];
+  if(P.length>=2){ drag3=null; pinch3={d:Math.hypot(P[0].x-P[1].x,P[0].y-P[1].y)||1, z:V3.zoom}; }
+  else if(P.length===1){ pinch3=null; drag3={x:P[0].x,y:P[0].y,yaw:V3.yaw,pitch:V3.pitch}; }
+  else { drag3=null; pinch3=null; }
+}
+el.cv3d.addEventListener('pointerdown',e=>{ try{ el.cv3d.setPointerCapture(e.pointerId); }catch(_){} ptr3.set(e.pointerId,{x:e.clientX,y:e.clientY}); g3start(); });
 el.cv3d.addEventListener('pointermove',e=>{
+  if(!ptr3.has(e.pointerId)) return;
+  ptr3.set(e.pointerId,{x:e.clientX,y:e.clientY});
+  if(pinch3){ const P=[...ptr3.values()]; if(P.length<2) return; V3.zoom=clamp(pinch3.z*(Math.hypot(P[0].x-P[1].x,P[0].y-P[1].y)||1)/pinch3.d,0.6,3); el.v3Zoom.value=V3.zoom; requestRedraw(); return; }
   if(!drag3) return;
   V3.yaw=drag3.yaw+(e.clientX-drag3.x)*0.01; V3.pitch=clamp(drag3.pitch+(e.clientY-drag3.y)*0.01,-1.5,1.5); requestRedraw();
 });
-for(const ev of ['pointerup','pointercancel']) el.cv3d.addEventListener(ev,()=>{ drag3=null; });
+for(const ev of ['pointerup','pointercancel']) el.cv3d.addEventListener(ev,e=>{ ptr3.delete(e.pointerId); g3start(); });
 el.cv3d.addEventListener('wheel',e=>{ e.preventDefault(); V3.zoom=clamp(V3.zoom*(e.deltaY<0?1.1:0.9),0.6,3); el.v3Zoom.value=V3.zoom; requestRedraw(); },{passive:false});
 el.v3Zoom.addEventListener('input',()=>{ V3.zoom=+el.v3Zoom.value; requestRedraw(); });
 el.v3Est.addEventListener('change',()=>{ V3.est=el.v3Est.checked; requestRedraw(); });
