@@ -188,7 +188,7 @@ header h1,header p{padding-right:48px}
 .tour .ring{position:fixed;border-radius:14px;box-shadow:0 0 0 9999px rgba(15,23,42,.62),0 0 0 4px #fbbf24 inset;transition:all .45s ease;pointer-events:none}
 .tour .hand{position:fixed;font-size:34px;pointer-events:none;transition:all .45s ease;animation:tourtap 1s ease-in-out infinite;filter:drop-shadow(0 2px 3px rgba(0,0,0,.5))}
 @keyframes tourtap{0%,100%{transform:translate(0,0) scale(1)}50%{transform:translate(-6px,-8px) scale(.9)}}
-.tour .cap{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom));transform:translateX(-50%);width:min(440px,92vw);background:#fff;border-radius:14px;padding:14px 16px;box-shadow:0 6px 24px rgba(0,0,0,.4)}
+.tour .cap{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);width:min(440px,92vw);background:#fff;border-radius:14px;padding:14px 16px;box-shadow:0 6px 24px rgba(0,0,0,.4)}
 .tour .cap b{font-size:16px}
 .tour .cap p{margin:6px 0 10px;font-size:14.5px;line-height:1.6}
 .tour .dots{display:flex;gap:6px;margin-bottom:8px}
@@ -413,7 +413,7 @@ footer{max-width:760px;margin:0 auto;padding:0 14px 30px;font-size:12.5px;color:
 <div class="tour" id="tour" role="dialog" aria-label="使い方のご案内">
   <div class="ring" id="tourRing"></div><div class="hand" id="tourHand">👆</div>
   <div class="cap"><div class="dots" id="tourDots"><i></i><i></i><i></i></div><b id="tourTtl"></b><p id="tourTxt"></p>
-    <div class="btns"><button class="btn small" id="tourSkip" type="button">スキップ</button><button class="btn small primary" id="tourNext" type="button">次へ</button></div></div>
+    <div class="btns"><span class="sub" style="margin-right:auto;align-self:center">画面のどこかをタップでも進みます</span><button class="btn small" id="tourSkip" type="button">スキップ</button><button class="btn small primary" id="tourNext" type="button">次へ</button></div></div>
 </div>
 <aside class="manual" id="manual" aria-label="使い方マニュアル">
   <div class="sdhead"><h2 style="margin:0">使い方マニュアル</h2><button class="btn small" id="manualClose" type="button">閉じる ✕</button></div>
@@ -787,7 +787,7 @@ footer{max-width:760px;margin:0 auto;padding:0 14px 30px;font-size:12.5px;color:
 <footer>
   姿勢推定（画像から関節の位置を見つける技術）による<b>目安の値</b>です。診断や評価の根拠にはせず、経過を見る参考として使ってください。<br>
   <a href="#" id="netManage" style="color:var(--accent)">解析データの管理</a>（保存状況の確認・取り直し・削除）<br>
-  試作版 v0.30.1
+  試作版 v0.30.2
 </footer>
 
 <!-- ============================================================
@@ -2373,6 +2373,7 @@ const TOUR={i:0,timer:null,
 };
 $('tourNext').addEventListener('click',()=>{ if(TOUR.i>=TOUR.steps.length-1) TOUR.end(); else TOUR.show(TOUR.i+1); });
 $('tourSkip').addEventListener('click',()=>TOUR.end());
+$('tour').addEventListener('click',e=>{ if(e.target.closest('.btns')) return; if(TOUR.i>=TOUR.steps.length-1) TOUR.end(); else TOUR.show(TOUR.i+1); });
 $('tourAgain').addEventListener('click',()=>{ manualToggle(false); setTimeout(()=>TOUR.start(),300); });
 window.addEventListener('resize',()=>{ if($('tour').classList.contains('on')) TOUR.show(TOUR.i); });
 { let seen=false; try{ seen=localStorage.getItem('motion.tour')==='1'; }catch(e){}
@@ -4615,7 +4616,7 @@ $('modeAna').addEventListener('click',()=>setMode('ana'));
 $('modeCmp').addEventListener('click',()=>setMode('cmp'));
 cmpOut();
 
-window.__app = {CMP, setMode, REC, loopRange, state, el, engine, V3, NET, TRK, trk, trkMatch, trkMakeTpl, trkFit, rootMotion, estimateDepth};
+window.__app = {TOUR, CMP, setMode, REC, loopRange, state, el, engine, V3, NET, TRK, trk, trkMatch, trkMakeTpl, trkFit, rootMotion, estimateDepth};
 </script>
 </body>
 </html>
