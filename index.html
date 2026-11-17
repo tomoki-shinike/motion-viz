@@ -160,6 +160,13 @@ td.sc .badge{margin-left:0;margin-top:2px;font-size:11px;padding:1px 8px}
 .cmpvid video{display:block;width:100%;max-height:300px;background:#000}
 #cmpSelCard .cmpvid video{max-height:170px}
 /* 重ね合わせの画面は、下の調整つまみを動かしている間も見えるよう、画面の上に固定する（スマホでは高さを抑える） */
+.seg{display:flex;gap:0;margin:6px 0 4px;border:1px solid var(--accent);border-radius:10px;overflow:hidden}
+.seg button{flex:1;padding:8px 4px;font-size:14px;font-weight:700;border:0;background:#fff;color:var(--accent);cursor:pointer;border-right:1px solid var(--accent)}
+.seg button:last-child{border-right:0}
+.seg button.on{background:var(--accent);color:#fff}
+.seg button:disabled{opacity:.5}
+body:not([data-cmplay="over"]) .ovonly{display:none!important}
+#cmpDrawer .seg{margin:4px 0 8px}
 .cmpsticky{position:sticky;top:0;z-index:20;background:var(--card);padding:6px 0 2px;margin:0 -2px;border-bottom:1px solid #e5e7eb}
 .cmpstage{position:relative;background:#000;border-radius:10px;overflow:hidden;touch-action:none;cursor:grab;text-align:center}
 .cmpstage canvas{display:block;margin:0 auto;width:auto;height:auto;max-width:100%;max-height:30vh}
@@ -332,7 +339,7 @@ footer{max-width:760px;margin:0 auto;padding:0 14px 30px;font-size:12.5px;color:
 
 <nav class="modebar" id="modeBar" aria-label="モードの切り替え">
   <button class="btn small modebtn on" id="modeAna" type="button">動作を解析する</button>
-  <button class="btn small modebtn" id="modeCmp" type="button">2つの動画を重ねて比べる</button>
+  <button class="btn small modebtn" id="modeCmp" type="button">2つの動画を比べる</button>
 </nav>
 
 <main id="cmpMain" class="hidden">
@@ -352,7 +359,7 @@ footer{max-width:760px;margin:0 auto;padding:0 14px 30px;font-size:12.5px;color:
         <div class="sub" id="cmpInfoA">動画を選んでください。</div>
       </div>
       <div class="cmpslot" id="cmpSlotB">
-        <div class="cmpname"><b>動画B（重ねる）</b></div>
+        <div class="cmpname"><b>動画B</b></div>
         <input type="file" id="cmpFileB" accept="video/*" class="cmpfile">
         <div class="cmpvid"><video id="cmpVB" muted playsinline preload="auto"></video></div>
         <input type="range" id="cmpScB" min="0" max="1" step="0.01" value="0" disabled aria-label="動画Bの再生位置">
@@ -367,8 +374,9 @@ footer{max-width:760px;margin:0 auto;padding:0 14px 30px;font-size:12.5px;color:
   </section>
 
   <section class="card" id="cmpStageCard">
-    <h2><span class="no">2</span>重ねて確認する</h2>
-    <div class="sub" id="cmpGuide">上の「1」で動画Aと動画Bを選んでください。選ぶと、ここに重ねて表示されます。</div>
+    <h2><span class="no">2</span>比べて確認する</h2>
+    <div class="seg" id="cmpLayoutBar" role="group" aria-label="比べ方"><button type="button" data-layout="over" class="on">重ねる</button><button type="button" data-layout="v">縦に並べる</button><button type="button" data-layout="h">横に並べる</button></div>
+    <div class="sub" id="cmpGuide">上の「1」で動画Aと動画Bを選んでください。選ぶと、ここに表示されます。</div>
     <div class="cmpsticky">
       <div class="cmpstage" id="cmpStage"><canvas id="cmpCv" width="640" height="360"></canvas></div>
       <div class="sub" id="cmpTime" style="margin-top:4px"></div>
@@ -389,15 +397,16 @@ footer{max-width:760px;margin:0 auto;padding:0 14px 30px;font-size:12.5px;color:
     </div>
 
     <button type="button" class="sidetab hidden" id="cmpTab" style="--tabTop:calc(var(--cmpTop,200px) + 8px)" aria-expanded="false" aria-controls="cmpDrawer"><span>調</span><span>整</span></button>
-    <aside class="cmpdrawer" id="cmpDrawer" aria-label="重ね方の調整">
-      <div class="trkttl"><b>重ね方の調整</b><span class="sub"> なぞる＝動画Bを移動／2本指＝拡大・縮小</span></div>
-      <div class="cmpgrid">
+    <aside class="cmpdrawer" id="cmpDrawer" aria-label="比べ方の調整">
+      <div class="trkttl"><b>調整</b><span class="sub" id="cmpDrawerHint"> なぞる＝動画Bを移動／2本指＝拡大・縮小</span></div>
+      <div class="seg" id="cmpLayoutBar2" role="group" aria-label="比べ方"><button type="button" data-layout="over" class="on">重ねる</button><button type="button" data-layout="v">縦に並べる</button><button type="button" data-layout="h">横に並べる</button></div>
+      <div class="cmpgrid ovonly">
         <label for="cmpOp">動画Bの濃さ</label><input type="range" id="cmpOp" min="0" max="100" step="1" value="50"><output id="cmpOpV">50%</output>
         <label for="cmpSc">動画Bの大きさ</label><input type="range" id="cmpSc" min="30" max="250" step="1" value="100"><output id="cmpScV">100%</output>
         <label for="cmpDx">左右の位置</label><input type="range" id="cmpDx" min="-100" max="100" step="1" value="0"><output id="cmpDxV">0</output>
         <label for="cmpDy">上下の位置</label><input type="range" id="cmpDy" min="-100" max="100" step="1" value="0"><output id="cmpDyV">0</output>
       </div>
-      <div class="trkgrid">
+      <div class="trkgrid ovonly">
         <label for="cmpMode">重ね方</label>
         <select id="cmpMode"><option value="alpha" selected>ふつうに重ねる（濃さで調整）</option><option value="diff">違いを強調する（同じところは黒くなる）</option></select>
       </div>
@@ -423,7 +432,7 @@ footer{max-width:760px;margin:0 auto;padding:0 14px 30px;font-size:12.5px;color:
     <li>「動作を解析する」で、写真か動画を選びます。</li>
     <li>動画は、解析したい区間（最大30秒）を決めて「解析する」を押します。</li>
     <li>結果（角度・動き・歩行のリズム）を画面で確認し、よければ左端の「保存」タブから保存します。</li>
-    <li>「2つの動画を重ねて比べる」では、別々の動画を重ねて見比べます。</li>
+    <li>「2つの動画を比べる」では、別々の動画を、重ねる・縦に並べる・横に並べる、のどれかで見比べます。</li>
     <li>動画や写真はこの端末の中だけで処理され、外には送られません。</li></ul></details>
   <details><summary>② うまく測る撮影のコツ</summary><ul>
     <li>カメラは動かさず（三脚や壁への固定がおすすめ）、全身が画面に入るようにします。</li>
@@ -458,7 +467,7 @@ footer{max-width:760px;margin:0 auto;padding:0 14px 30px;font-size:12.5px;color:
     <li>動画：骨格や角度つきの動画を保存します。実際の再生と同じ時間がかかり、録画中は画面を切り替えないでください。</li>
     <li>スマホでは共有メニューが開きます。「画像を保存」を選ぶと写真アプリに入ります。</li>
     <li>顔が分かる動画を保存・共有するときは、ご本人の同意と取り扱いにご注意ください。複数人の動画では、対象者以外の顔は隠せません。</li></ul></details>
-  <details><summary>⑧ 2つの動画を重ねて比べる</summary><ul>
+  <details><summary>⑧ 2つの動画を比べる</summary><ul>
     <li>動画Aが土台、動画Bが上に重なります。それぞれ「この場面を起点にする」で、比べたい瞬間（足が着く瞬間など）をそろえます。</li>
     <li>左端の「調整」タブ：Bの濃さ・大きさ・位置などを調整します。</li>
     <li>重ねた画面の上で、1本指でなぞるとBが動き、2本指で広げる／狭めると大きさが変わります（パソコンはホイール）。</li>
@@ -730,7 +739,7 @@ footer{max-width:760px;margin:0 auto;padding:0 14px 30px;font-size:12.5px;color:
           <select id="recRange"><option value="loop" selected>繰り返し再生の範囲</option><option value="all">解析した区間ぜんぶ</option></select>
         </div>
         <label class="check"><input type="checkbox" id="recWith3d" checked>3Dのスティックピクチャーも横に並べる</label>
-        <label class="check"><input type="checkbox" id="recBlack">背景を黒にして、スティックピクチャーだけを保存する（動画を重ねて比べるとき向け）</label>
+        <label class="check"><input type="checkbox" id="recBlack">背景を黒にして、スティックピクチャーだけを保存する（動画を比べるとき向け）</label>
         <button class="btn primary big" id="recBtn" type="button" style="margin-top:6px">🎬 スティックピクチャー付きの動画を保存</button>
         <button class="btn big hidden" id="recCancel" type="button" style="margin-top:6px">録画を中止</button>
         <div class="sub" id="recInfo" style="margin-top:4px"></div>
@@ -790,7 +799,7 @@ footer{max-width:760px;margin:0 auto;padding:0 14px 30px;font-size:12.5px;color:
 <footer>
   姿勢推定（画像から関節の位置を見つける技術）による<b>目安の値</b>です。診断や評価の根拠にはせず、経過を見る参考として使ってください。<br>
   <a href="#" id="netManage" style="color:var(--accent)">解析データの管理</a>（保存状況の確認・取り直し・削除）<br>
-  試作版 v0.31.2
+  試作版 v0.32.0
 </footer>
 
 <!-- ============================================================
@@ -2355,8 +2364,8 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') manualToggle(false
 const TOUR={i:0,timer:null,
   steps:[
     {sel:'#menuBtn',tap:true,ttl:'使い方は、ここにまとめました',txt:'右上の「☰」を押すと、使い方マニュアルが開きます。画面の中の説明は少なくしてあるので、迷ったらここを見てください。'},
-    {sel:'#manual',open:true,ttl:'知りたい項目をタップ',txt:'撮影のコツ・区間の決め方・保存のしかた・重ねて比べる方法などが、項目ごとにまとまっています。タップで開閉できます。'},
-    {sel:'#shootTab',ttl:'左端のタブも使います',txt:'「撮影方法」（解析のあとは「保存」、重ねて比べるときは「調整」）は、左端のタブから開きます。親指で押しやすい位置です。'}],
+    {sel:'#manual',open:true,ttl:'知りたい項目をタップ',txt:'撮影のコツ・区間の決め方・保存のしかた・2つの動画を比べる方法などが、項目ごとにまとまっています。タップで開閉できます。'},
+    {sel:'#shootTab',ttl:'左端のタブも使います',txt:'「撮影方法」（解析のあとは「保存」、動画を比べるときは「調整」）は、左端のタブから開きます。親指で押しやすい位置です。'}],
   show(i){
     const T=TOUR, st=T.steps[i]; T.i=i; clearTimeout(T.timer);
     manualToggle(!!st.open);
@@ -4415,8 +4424,10 @@ const CMP = {
   op:$('cmpOp'), opV:$('cmpOpV'), sc:$('cmpSc'), scV:$('cmpScV'), dx:$('cmpDx'), dxV:$('cmpDxV'), dy:$('cmpDy'), dyV:$('cmpDyV'),
   mode:$('cmpMode'), flip:$('cmpFlip'), reset:$('cmpReset'), swap:$('cmpSwap'),
   saveImg:$('cmpSaveImg'), saveVid:$('cmpSaveVid'), recCancel:$('cmpRecCancel'), saveInfo:$('cmpSaveInfo'),
-  show:false, playing:false, raf:0, tau:0, tmin:0, tmax:0, rec:false, recCancelFlag:false, drag:null, FR:1/30
+  show:false, playing:false, raf:0, tau:0, tmin:0, tmax:0, rec:false, recCancelFlag:false, drag:null, FR:1/30,
+  layout:'over', view:[{k:1,x:0,y:0},{k:1,x:0,y:0}]      // 並べて比べるときの、動画A・Bそれぞれの拡大と位置（枠に対する割合）
 };
+document.body.dataset.cmplay='over';
 const cmpBoth = ()=>CMP.A.anchor!=null && CMP.B.anchor!=null && CMP.A.ready && CMP.B.ready;
 function cmpRange(){                                         // 共通の時間（起点＝0秒）の範囲：起点より前・後ろ、どちらの動画にもある部分
   const a=CMP.A, b=CMP.B;
@@ -4425,17 +4436,39 @@ function cmpRange(){                                         // 共通の時間�
   if(CMP.tmax<CMP.tmin+0.1) CMP.tmax=CMP.tmin+0.1;
 }
 function cmpFmt(t){ return (t>=0?'+':'−')+Math.abs(t).toFixed(2)+' 秒'; }
-function cmpSizeCanvas(){                                    // 土台（動画A）の縦横比に合わせる
+function cmpRegions(){                                       // 並べるときの、動画A・Bそれぞれの枠（キャンバス上の位置）
+  const W=CMP.cv.width, H=CMP.cv.height;
+  return CMP.layout==='h' ? [{x:0,y:0,w:W/2,h:H},{x:W/2,y:0,w:W/2,h:H}] : [{x:0,y:0,w:W,h:H/2},{x:0,y:H/2,w:W,h:H/2}];
+}
+function cmpSizeCanvas(){                                    // 重ねるときは土台（動画A）の縦横比に、並べるときは16:9に合わせる
+  if(CMP.layout!=='over'){ if(CMP.cv.width!==1280 || CMP.cv.height!==720){ CMP.cv.width=1280; CMP.cv.height=720; } return; }
   const v=CMP.A.ready ? CMP.A.v : (CMP.B.ready ? CMP.B.v : null);
   if(!v || !v.videoWidth) return;
   const sc=Math.min(1, 1280/Math.max(v.videoWidth, v.videoHeight));
   const w=Math.round(v.videoWidth*sc), h=Math.round(v.videoHeight*sc);
   if(CMP.cv.width!==w || CMP.cv.height!==h){ CMP.cv.width=w; CMP.cv.height=h; }
 }
+function cmpDrawSplit(ctx,W,H){
+  const R=cmpRegions();
+  [CMP.A,CMP.B].forEach((S,i)=>{
+    const r=R[i], vw=S.v.videoWidth, vh=S.v.videoHeight, vw_=CMP.view[i];
+    if(!S.ready || S.v.readyState<2 || !vw) return;
+    const s=Math.min(r.w/vw, r.h/vh)*vw_.k, dw=vw*s, dh=vh*s;
+    const cx=r.x+r.w/2+vw_.x*r.w, cy=r.y+r.h/2+vw_.y*r.h;
+    ctx.save(); ctx.beginPath(); ctx.rect(r.x,r.y,r.w,r.h); ctx.clip();
+    ctx.translate(cx,cy); if(i===1 && CMP.flip.checked) ctx.scale(-1,1);
+    ctx.drawImage(S.v,-dw/2,-dh/2,dw,dh); ctx.restore();
+  });
+  ctx.fillStyle='rgba(255,255,255,.85)';                                    // 区切りの線
+  if(CMP.layout==='h') ctx.fillRect(W/2-1,0,2,H); else ctx.fillRect(0,H/2-1,W,2);
+  ctx.font='bold 26px sans-serif'; ctx.textBaseline='top';                   // 「A」「B」の目印
+  R.forEach((r,i)=>{ ctx.fillStyle='rgba(0,0,0,.55)'; ctx.fillRect(r.x+8,r.y+8,36,36); ctx.fillStyle='#fff'; ctx.fillText(i?'B':'A',r.x+17,r.y+11); });
+}
 function cmpDraw(){
   const cv=CMP.cv, ctx=cv.getContext('2d'), W=cv.width, H=cv.height;
   ctx.globalCompositeOperation='source-over'; ctx.globalAlpha=1;
   ctx.fillStyle='#000'; ctx.fillRect(0,0,W,H);
+  if(CMP.layout!=='over'){ cmpDrawSplit(ctx,W,H); return; }
   const A=CMP.A, B=CMP.B;
   if(A.ready && A.v.readyState>=2) ctx.drawImage(A.v,0,0,W,H);
   if(B.ready && B.v.readyState>=2 && B.v.videoWidth){
@@ -4490,8 +4523,8 @@ function cmpEnable(){
   for(const x of [CMP.scrub, CMP.prev, CMP.next, CMP.play, CMP.saveImg, CMP.saveVid]) x.disabled=!both || CMP.rec;
   $('cmpTab').classList.toggle('hidden', !both); if(!both && document.body.dataset.cmp==='adj') cmpPanel(null);
   if(both){ const first=!CMP.bothSeen; CMP.bothSeen=true; cmpRange(); CMP.scrub.min=CMP.tmin; CMP.scrub.max=CMP.tmax; if(first){ setTimeout(cmpToStage,50); } }
-  CMP.guide.textContent = both ? '起点が0秒です。最初は、どちらも動画の最初が起点です（上の「1」で変えられます）。下の再生バーで起点の前後を行き来し、「調整」タブで動画Bの濃さ・大きさ・位置を調整して、動きを見比べてください。'
-    : '上の「1」で動画Aと動画Bを選んでください。選ぶと、ここに重ねて表示されます。';
+  CMP.guide.textContent = both ? (CMP.layout==='over' ? '起点が0秒です。最初は、どちらも動画の最初が起点です（上の「1」で変えられます）。下の再生バーで起点の前後を行き来し、「調整」タブで動画Bの濃さ・大きさ・位置を調整して、動きを見比べてください。' : '起点が0秒です（上の「1」で変えられます）。動画の上をなぞると移動、2本指で拡大・縮小できます（AとBを別々に調整できます）。')
+    : '上の「1」で動画Aと動画Bを選んでください。選ぶと、ここに表示されます。';
 }
 function cmpSlotInfo(S, name){
   const v=S.v;
@@ -4535,11 +4568,12 @@ CMP.play.addEventListener('click',()=>{ CMP.playing ? cmpPause() : cmpPlay(); })
 CMP.speed.addEventListener('change',()=>{ const r=+CMP.speed.value; CMP.A.v.playbackRate=r; CMP.B.v.playbackRate=r; });
 function cmpOut(){ CMP.opV.textContent=CMP.op.value+'%'; CMP.scV.textContent=CMP.sc.value+'%'; CMP.dxV.textContent=CMP.dx.value; CMP.dyV.textContent=CMP.dy.value; }
 for(const x of [CMP.op, CMP.sc, CMP.dx, CMP.dy]) x.addEventListener('input',cmpOut);
-CMP.reset.addEventListener('click',()=>{ CMP.sc.value=100; CMP.dx.value=0; CMP.dy.value=0; CMP.flip.checked=false; cmpOut(); });
+CMP.reset.addEventListener('click',()=>{ CMP.sc.value=100; CMP.dx.value=0; CMP.dy.value=0; CMP.flip.checked=false; CMP.view=[{k:1,x:0,y:0},{k:1,x:0,y:0}]; cmpOut(); });
 CMP.swap.addEventListener('click',()=>{
   cmpPause();
   const a=CMP.A, b=CMP.B;
   for(const k of ['url','anchor','ready']){ const t=a[k]; a[k]=b[k]; b[k]=t; }
+  CMP.view.reverse();
   const sa=a.v.getAttribute('src'), sb=b.v.getAttribute('src'), ta=a.v.currentTime, tb=b.v.currentTime;
   a.v.src=sb||''; b.v.src=sa||'';
   a.v.onloadedmetadata=()=>{ a.v.currentTime=tb; cmpSizeCanvas(); cmpSlotInfo(a); a.sc.max=a.v.duration; cmpEnable(); if(cmpBoth()) cmpSeek(CMP.tau); };
@@ -4549,11 +4583,25 @@ CMP.swap.addEventListener('click',()=>{
 });
 // 画面の上をなぞって動画Bを動かす／2本指でつまんで拡大・縮小（パソコンはマウスのホイール）
 CMP.ptrs=new Map();
+const cmpClamp=(v,lo,hi)=>Math.max(lo,Math.min(hi,v));
+function cmpRegionAt(cx,cy){                                  // 画面上の位置から、並べたときのどちらの動画か（0＝A／1＝B）
+  const r=CMP.cv.getBoundingClientRect(); if(!r.width||!r.height) return 0;
+  return CMP.layout==='h' ? ((cx-r.left)/r.width<0.5?0:1) : ((cy-r.top)/r.height<0.5?0:1);
+}
+function cmpRegionCss(i){                                     // その動画の枠の、画面上の大きさ（CSSピクセル）
+  const r=CMP.cv.getBoundingClientRect(); return CMP.layout==='h' ? {w:r.width/2,h:r.height} : {w:r.width,h:r.height/2};
+}
 function cmpGestureStart(){
-  const P=[...CMP.ptrs.values()];
-  if(P.length>=2){ CMP.drag=null; CMP.pinch={d:Math.hypot(P[0].x-P[1].x,P[0].y-P[1].y)||1, sc:+CMP.sc.value, mx:(P[0].x+P[1].x)/2, my:(P[0].y+P[1].y)/2, dx:+CMP.dx.value, dy:+CMP.dy.value}; }
-  else if(P.length===1){ CMP.pinch=null; CMP.drag={x:P[0].x, y:P[0].y, dx:+CMP.dx.value, dy:+CMP.dy.value}; }
-  else { CMP.drag=null; CMP.pinch=null; }
+  const P=[...CMP.ptrs.values()], split=CMP.layout!=='over';
+  if(P.length>=2){
+    CMP.drag=null;
+    const mx=(P[0].x+P[1].x)/2, my=(P[0].y+P[1].y)/2, idx=split?cmpRegionAt(mx,my):0, v=CMP.view[idx];
+    CMP.pinch={d:Math.hypot(P[0].x-P[1].x,P[0].y-P[1].y)||1, sc:+CMP.sc.value, mx, my, dx:+CMP.dx.value, dy:+CMP.dy.value, idx, k:v.k, vx:v.x, vy:v.y};
+  }else if(P.length===1){
+    CMP.pinch=null;
+    const idx=split?cmpRegionAt(P[0].x,P[0].y):0, v=CMP.view[idx];
+    CMP.drag={x:P[0].x, y:P[0].y, dx:+CMP.dx.value, dy:+CMP.dy.value, idx, vx:v.x, vy:v.y};
+  }else{ CMP.drag=null; CMP.pinch=null; }
 }
 CMP.stage.addEventListener('pointerdown',e=>{
   if(!cmpBoth()) return;
@@ -4565,23 +4613,39 @@ CMP.stage.addEventListener('pointermove',e=>{
   if(!CMP.ptrs.has(e.pointerId)) return;
   CMP.ptrs.set(e.pointerId,{x:e.clientX,y:e.clientY});
   const r=CMP.cv.getBoundingClientRect(); if(!r.width||!r.height) return;
-  const clamp=(v,lo,hi)=>Math.max(lo,Math.min(hi,v));
+  const split=CMP.layout!=='over';
   if(CMP.pinch){
     const P=[...CMP.ptrs.values()]; if(P.length<2) return;
-    const d=Math.hypot(P[0].x-P[1].x,P[0].y-P[1].y)||1, mx=(P[0].x+P[1].x)/2, my=(P[0].y+P[1].y)/2;
-    CMP.sc.value=clamp(Math.round(CMP.pinch.sc*d/CMP.pinch.d),+CMP.sc.min,+CMP.sc.max);
-    CMP.dx.value=clamp(Math.round(CMP.pinch.dx+(mx-CMP.pinch.mx)/r.width*200),-100,100);
-    CMP.dy.value=clamp(Math.round(CMP.pinch.dy+(my-CMP.pinch.my)/r.height*200),-100,100); cmpOut(); return;
+    const g=CMP.pinch, d=Math.hypot(P[0].x-P[1].x,P[0].y-P[1].y)||1, mx=(P[0].x+P[1].x)/2, my=(P[0].y+P[1].y)/2;
+    if(split){
+      const v=CMP.view[g.idx], rc=cmpRegionCss(g.idx);
+      v.k=cmpClamp(g.k*d/g.d,0.3,8); v.x=cmpClamp(g.vx+(mx-g.mx)/rc.w,-2,2); v.y=cmpClamp(g.vy+(my-g.my)/rc.h,-2,2); return;
+    }
+    CMP.sc.value=cmpClamp(Math.round(g.sc*d/g.d),+CMP.sc.min,+CMP.sc.max);
+    CMP.dx.value=cmpClamp(Math.round(g.dx+(mx-g.mx)/r.width*200),-100,100);
+    CMP.dy.value=cmpClamp(Math.round(g.dy+(my-g.my)/r.height*200),-100,100); cmpOut(); return;
   }
   if(!CMP.drag) return;
-  CMP.dx.value=clamp(Math.round(CMP.drag.dx+(e.clientX-CMP.drag.x)/r.width*200),-100,100); CMP.dy.value=clamp(Math.round(CMP.drag.dy+(e.clientY-CMP.drag.y)/r.height*200),-100,100); cmpOut();
+  const g=CMP.drag;
+  if(split){ const v=CMP.view[g.idx], rc=cmpRegionCss(g.idx); v.x=cmpClamp(g.vx+(e.clientX-g.x)/rc.w,-2,2); v.y=cmpClamp(g.vy+(e.clientY-g.y)/rc.h,-2,2); return; }
+  CMP.dx.value=cmpClamp(Math.round(g.dx+(e.clientX-g.x)/r.width*200),-100,100); CMP.dy.value=cmpClamp(Math.round(g.dy+(e.clientY-g.y)/r.height*200),-100,100); cmpOut();
 });
 const cmpDragEnd=e=>{ CMP.ptrs.delete(e.pointerId); cmpGestureStart(); if(!CMP.ptrs.size) CMP.stage.style.cursor='grab'; };
 CMP.stage.addEventListener('pointerup',cmpDragEnd); CMP.stage.addEventListener('pointercancel',cmpDragEnd);
 CMP.stage.addEventListener('wheel',e=>{
   if(!cmpBoth()) return; e.preventDefault();
+  if(CMP.layout!=='over'){ const v=CMP.view[cmpRegionAt(e.clientX,e.clientY)]; v.k=cmpClamp(v.k*Math.exp(-e.deltaY*0.002),0.3,8); return; }
   CMP.sc.value=Math.max(+CMP.sc.min,Math.min(+CMP.sc.max,Math.round(+CMP.sc.value*Math.exp(-e.deltaY*0.002)))); cmpOut();
 },{passive:false});
+// 比べ方（重ねる／縦に並べる／横に並べる）の切り替え
+function cmpSetLayout(l){
+  if(CMP.rec || CMP.layout===l) return;
+  CMP.layout=l; document.body.dataset.cmplay=l;
+  document.querySelectorAll('#cmpLayoutBar button, #cmpLayoutBar2 button').forEach(b=>b.classList.toggle('on', b.dataset.layout===l));
+  $('cmpDrawerHint').textContent = l==='over' ? ' なぞる＝動画Bを移動／2本指＝拡大・縮小' : ' 動画の上でなぞる＝移動／2本指＝拡大・縮小（A・Bそれぞれ）';
+  cmpSizeCanvas(); cmpDraw(); cmpEnable();
+}
+document.querySelectorAll('#cmpLayoutBar button, #cmpLayoutBar2 button').forEach(b=>b.addEventListener('click',()=>cmpSetLayout(b.dataset.layout)));
 // 保存
 CMP.saveImg.addEventListener('click',async()=>{
   try{
